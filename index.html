@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ABLE Exoskeleton</title>
 <meta name="description" content="ABLE is a 9.8 kg knee-powered exoskeleton, CE-marked under EU MDR, that gets people with spinal cord injury standing and walking in clinic.">
-<meta name="theme-color" content="#07080a">
+<meta name="theme-color" content="#120d24">
+<script>(function(){var t;try{t=new URLSearchParams(location.search).get('theme')||sessionStorage.getItem('able-theme');}catch(e){}document.documentElement.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <script type="importmap">
 { "imports": {
@@ -47,20 +48,14 @@
   </nav>
   <div class="nav-right">
     <span class="lang mono"><b>EN</b> / ES</span>
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light mode">
+      <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+      <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>
+    </button>
     <a class="btn btn-small" href="#contact">Book a demo</a>
   </div>
 </header>
 
-<!-- Live HUD -->
-<aside class="hud mono" aria-hidden="true">
-  <div class="hud-row"><i class="dot"></i><span id="hud-mode">Live gait model</span></div>
-  <div class="hud-grid">
-    <span>Cycle</span><b id="hud-cycle">0%</b>
-    <span>Knee</span><b id="hud-knee">0°</b>
-    <span>Hip</span><b id="hud-hip">0°</b>
-    <span>Speed</span><b id="hud-speed">0.00 m/s</b>
-  </div>
-</aside>
 <div class="chapter mono" aria-hidden="true"><span id="chapter-n">01</span><i></i><span id="chapter-t">Movement</span></div>
 
 <!-- 3D callout layer -->
@@ -80,6 +75,15 @@
         <a class="btn btn-ghost" href="#gait">Watch one step <span aria-hidden="true">↓</span></a>
       </div>
     </div>
+    <figure class="mf-photos hero-photos">
+      <div class="mf-frame">
+        <img src="assets/img/eye-level.jpg" alt="A woman standing upright in the ABLE exoskeleton, smiling at eye level" decoding="async">
+        <img src="assets/img/hug.jpg" alt="A man standing in the ABLE exoskeleton with crutches, a therapist close behind him" decoding="async">
+        <img src="assets/img/first-step.jpg" alt="A woman taking a step in the ABLE exoskeleton outdoors, her empty wheelchair behind her" decoding="async">
+        <img src="assets/img/thousandth.jpg" alt="A man standing outdoors in the ABLE exoskeleton, looking ahead" decoding="async">
+      </div>
+      <figcaption class="mono tiny"><span class="mf-n">01</span><i></i><span class="mf-cap">Eye level</span><span class="mf-of">/ 04</span></figcaption>
+    </figure>
     <div class="hero-foot mono reveal">
       <span>Fig. 1 Chronophotograph of a walking ABLE user, rendered live, after Marey (1882)</span>
       <span class="scroll-cue"><i></i>Scroll</span>
@@ -105,14 +109,6 @@
         <p class="body">A step takes about two seconds. Scroll through the eight phases of one gait cycle and watch the powered knee work through each of them.</p>
       </div>
       <div class="gait-panel glass">
-        <div class="gp-head">
-          <div>
-            <p class="mono tiny mute">Phase</p>
-            <p class="gp-phase" id="gp-phase">Initial contact</p>
-          </div>
-          <p class="gp-pct mono" id="gp-pct">0%</p>
-        </div>
-        <p class="gp-desc" id="gp-desc"></p>
         <svg class="gp-chart" id="gp-chart" viewBox="0 0 320 150" role="img" aria-label="Knee and hip angle across the gait cycle">
           <g class="gp-grid"></g>
           <path id="gp-stance" class="gp-stance"/>
@@ -131,7 +127,13 @@
           <span><i class="sw sw-stance"></i>Stance</span>
         </div>
         <input id="gp-scrub" class="scrub" type="range" min="0" max="1000" value="0" aria-label="Scrub through the gait cycle">
-        <ol class="gp-phases mono tiny" id="gp-phases"></ol>
+        <div class="gp-foot">
+          <div class="gp-title">
+            <p class="mono tiny mute">Phase <span class="gp-step-n" id="gp-step-n">01</span> / 08</p>
+            <p class="gp-phase" id="gp-phase">Initial contact</p>
+          </div>
+          <p class="gp-desc" id="gp-desc"></p>
+        </div>
       </div>
       <p class="gait-note mono tiny mute">Kinematics show a typical sagittal-plane gait pattern for illustration. They are not recorded device data.</p>
     </div>
@@ -144,14 +146,14 @@
         <p class="mono label">04 The device</p>
         <h2 class="h2">Built for the gym floor,<br><em>not the showroom.</em></h2>
         <p class="body">Everything a therapist needs to get a patient standing, and nothing to wrestle with between sessions.</p>
+        <ul class="spec-strip mono">
+          <li><b>9.8<small>kg</small></b><span>Device weight</span></li>
+          <li><b>150–190<small>cm</small></b><span>User height</span></li>
+          <li><b>≤100<small>kg</small></b><span>User weight</span></li>
+          <li><b>C5–L5</b><span>Injury levels</span></li>
+          <li><b>&lt;7<small>min</small></b><span>To fit</span></li>
+        </ul>
       </div>
-      <ul class="spec-strip mono">
-        <li><b>9.8<small>kg</small></b><span>Device weight</span></li>
-        <li><b>150–190<small>cm</small></b><span>User height</span></li>
-        <li><b>≤100<small>kg</small></b><span>User weight</span></li>
-        <li><b>C5–L5</b><span>Injury levels</span></li>
-        <li><b>&lt;7<small>min</small></b><span>To fit</span></li>
-      </ul>
       <ol class="callout-list" id="callouts">
         <li data-anchor="knee"><span class="mono">01</span><div><h3>Powered knee</h3><p>A motorised joint drives knee flexion and extension through the step.</p></div></li>
         <li data-anchor="hip"><span class="mono">02</span><div><h3>Passive hip</h3><p>The hip joint is unpowered, so the pelvis moves naturally and the device stays light.</p></div></li>
@@ -191,7 +193,7 @@
       <header class="clinic-head">
         <p class="mono label">06 For clinic directors &amp; procurement</p>
         <h2 class="h2 reveal">The six questions<br><em>your committee will ask.</em></h2>
-        <p class="body reveal">A capital purchase deserves straight answers. Here they are, sourced, before anyone asks for a meeting.</p>
+        <p class="body sub reveal">A capital purchase deserves straight answers. Here they are, sourced, before anyone asks for a meeting.</p>
       </header>
 
       <div class="qa">
@@ -296,7 +298,7 @@
         <div>
           <p class="mono label">Next step</p>
           <h2 class="h2">See ABLE walk<br><em>in your gym.</em></h2>
-          <p class="body">We'll bring the device, fit a patient or a volunteer and run a full session with your team. You'll have the evidence pack, a throughput model and the reimbursement dossier.</p>
+          <p class="body sub">We'll bring the device, fit a patient or a volunteer and run a full session with your team. You'll have the evidence pack, a throughput model and the reimbursement dossier.</p>
         </div>
         <div class="cta-actions">
           <a class="btn" href="mailto:hello@ablehumanmotion.com?subject=Clinical%20demo%20request">Book a clinical demo</a>
@@ -305,10 +307,68 @@
         </div>
       </div>
     </div>
-    <footer class="foot mono tiny">
-      <span>ABLE Human Motion S.L. · C/ Marie Curie 8–14, 08042 Barcelona</span>
-      <span>Exoskeleton · Clinical evidence · Spinal cord injury · About · Careers · Distributors</span>
-      <span>Concept redesign · 2026 · <button id="review-toggle" class="review-btn">Show content gaps</button></span>
+    <footer class="foot">
+      <div class="foot-top">
+        <div class="foot-lead">
+          <p class="foot-label mono">Stay in step</p>
+          <h3 class="foot-title">News from the clinic floor, <span>a few times a year.</span></h3>
+          <form class="foot-news tbc" data-note="Needs ABLE input: connect newsletter provider" id="foot-news" novalidate>
+            <label class="sr" for="foot-email">Email address</label>
+            <input id="foot-email" type="email" placeholder="Your work email" autocomplete="email">
+            <button type="submit">Subscribe <span aria-hidden="true">→</span></button>
+          </form>
+          <p class="foot-note mono" id="foot-news-msg" aria-live="polite">Clinical updates, new evidence and events. No spam.</p>
+        </div>
+        <nav class="foot-cols" aria-label="Footer">
+          <div>
+            <p class="foot-label mono">Device</p>
+            <a href="#device">Exoskeleton</a>
+            <a href="#gait">How it walks</a>
+            <a href="#q-evidence">Clinical evidence</a>
+            <a href="#outcomes">Outcomes</a>
+            <a href="#clinic">For clinics</a>
+          </div>
+          <div>
+            <p class="foot-label mono">Company</p>
+            <a href="#top">About us</a>
+            <a href="#top">Team</a>
+            <a href="#network">Collaborators</a>
+            <a href="#network">Distributors</a>
+            <a href="#top">Blog &amp; events</a>
+          </div>
+          <div>
+            <p class="foot-label mono">Contact</p>
+            <a href="mailto:hello@ablehumanmotion.com">hello@ablehumanmotion.com</a>
+            <a href="tel:+34931892594">+34 931 89 25 94</a>
+            <p class="foot-addr">C/ Marie Curie 8–14<br>08042 Barcelona, Spain</p>
+            <a class="foot-cta" href="#contact">Book a clinical demo <span aria-hidden="true">↗</span></a>
+          </div>
+        </nav>
+      </div>
+
+      <div class="foot-mark" aria-hidden="true">
+        <svg viewBox="0 0 1000 250" preserveAspectRatio="xMidYMax meet">
+          <defs>
+            <linearGradient id="fm-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f4f6f8" stop-opacity=".95"/>
+              <stop offset="1" stop-color="#f4f6f8" stop-opacity=".08"/>
+            </linearGradient>
+          </defs>
+          <text x="500" y="236" text-anchor="middle" textLength="990" lengthAdjust="spacingAndGlyphs">ABLE</text>
+          <path id="fm-trace" class="fm-trace" d=""/>
+          <path id="fm-gait" class="fm-gait" d=""/>
+          <circle id="fm-dot" class="fm-dot" r="6"/>
+        </svg>
+      </div>
+
+      <div class="foot-bottom mono">
+        <span>© 2026 ABLE Human Motion S.L.</span>
+        <span class="foot-legal"><a href="#top">Privacy</a><a href="#top">Cookies</a><a href="#top">Terms</a></span>
+        <span class="foot-social"><a href="#top">LinkedIn</a><a href="#top">Instagram</a><a href="#top">YouTube</a><a href="#top">X</a></span>
+        <span>Barcelona <b id="foot-clock">--:--</b></span>
+        <span>Concept redesign · <button id="review-toggle" class="review-btn">Show content gaps</button></span>
+        <a href="#top" class="foot-top-link">Back to top <span aria-hidden="true">↑</span></a>
+      </div>
     </footer>
   </section>
 </main>

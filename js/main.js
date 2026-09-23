@@ -29,7 +29,9 @@ const mod = (x, m = 1) => ((x % m) + m) % m;
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const isMobile = () => innerWidth < 760;
+// compact = phones and portrait tablets (stacked stage layout); mid = landscape tablets / small laptops
+const isMobile = () => innerWidth < 760 || (innerWidth <= 1100 && innerHeight > innerWidth);
+const isMid = () => !isMobile() && innerWidth <= 1100;
 
 const loader = {
   bar: $('#loader-bar'), pct: $('#loader-pct'),
@@ -93,40 +95,63 @@ function legsAt(p, amp) {
   leg2D(legAngles(p, amp, _ang), _R);
   leg2D(legAngles(p + .5, amp, _ang), _L);
 }
-function contactCode(p, amp) {
-  legsAt(p, amp);
-  let m = _R.hy, c = 0;
-  if (_R.ty < m) { m = _R.ty; c = 1; }
-  if (_L.hy < m) { m = _L.hy; c = 2; }
-  if (_L.ty < m) { c = 3; }
-  return c;
+// Support schedule: body weight rolls onto the right leg over [.04, .2] of the
+// cycle and back onto the left half a cycle later. Scheduling it (rather than
+// pinning whichever point is lowest) keeps progression always forward and
+// free of the snap when the lowest point jumps from one foot to the other.
+const LOAD_A = .04, LOAD_B = .2;
+function rightLoad(p) {
+  const q = mod(p - LOAD_A), L = LOAD_B - LOAD_A;
+  return q < L ? smooth(q / L) : q < .5 ? 1 : q < .5 + L ? 1 - smooth((q - .5) / L) : 0;
 }
-function contactX(p, amp, c) {
-  legsAt(p, amp);
-  return c === 0 ? _R.hx : c === 1 ? _R.tx : c === 2 ? _L.hx : _L.tx;
+// Heel rocker -> toe rocker, switched while the foot is flat so it adds no slip.
+const roll = s => smooth(clamp((s - .15) / .25));
+// Soft minimum: pelvis height eases between feet instead of kinking at each switch.
+function softMin(a, b, c, d, k = 90) {
+  const m = Math.min(a, b, c, d);
+  return m - Math.log(Math.exp(-k * (a - m)) + Math.exp(-k * (b - m)) + Math.exp(-k * (c - m)) + Math.exp(-k * (d - m))) / k;
 }
-// Ground displacement between two phases: the planted point must not skate.
-function groundDelta(p0, p1, amp) {
-  const n = Math.max(1, Math.ceil(Math.abs(p1 - p0) / .01));
-  let d = 0;
-  for (let i = 0; i < n; i++) {
-    const a = p0 + (p1 - p0) * i / n, b = p0 + (p1 - p0) * (i + 1) / n;
-    const c = contactCode(b, amp);
-    d += contactX(b, amp, c) - contactX(a, amp, c);
-  }
-  return d;
+function blurCyclic(a, sig) {
+  const n = a.length, r = Math.ceil(sig * 3), w = [], out = new Float32Array(n);
+  let ws = 0;
+  for (let k = -r; k <= r; k++) { w.push(Math.exp(-k * k / (2 * sig * sig))); ws += w[w.length - 1]; }
+  for (let i = 0; i < n; i++) { let s = 0; for (let k = -r; k <= r; k++) s += a[mod(i + k, n)] * w[k + r]; out[i] = s / ws; }
+  return out;
 }
-// Cumulative ground-displacement table for one cycle (used by ghosts & crutches).
-const DT = { amp: -1, N: 200, tab: new Float32Array(201), tot: 0 };
+// Per-cycle tables: cumulative ground displacement (used by grid, ghosts &
+// crutches) and pelvis height, both low-passed so velocity and bob stay smooth.
+const DT = { amp: -1, N: 200, tab: new Float32Array(201), tot: 0, py: new Float32Array(200) };
 function ensureDTable(amp) {
   if (Math.abs(DT.amp - amp) < .004) return;
-  DT.amp = amp; DT.tab[0] = 0;
-  for (let i = 0; i < DT.N; i++) DT.tab[i + 1] = DT.tab[i] + groundDelta(i / DT.N, (i + 1) / DT.N, amp);
-  DT.tot = DT.tab[DT.N];
+  DT.amp = amp;
+  const N = DT.N, vel = new Float32Array(N), py = new Float32Array(N);
+  let hx0, tx0, hx1, tx1;
+  for (let i = 0; i < N; i++) {
+    const p0 = i / N, p1 = (i + 1) / N, pm = (i + .5) / N;
+    legsAt(p0, amp);
+    py[i] = -softMin(_R.hy, _R.ty, _L.hy, _L.ty) + SOLE;
+    hx0 = [_R.hx, _L.hx]; tx0 = [_R.tx, _L.tx];
+    legsAt(p1, amp);
+    hx1 = [_R.hx, _L.hx]; tx1 = [_R.tx, _L.tx];
+    const vR = lerp(hx1[0] - hx0[0], tx1[0] - tx0[0], roll(mod(pm)));
+    const vL = lerp(hx1[1] - hx0[1], tx1[1] - tx0[1], roll(mod(pm + .5)));
+    const w = rightLoad(pm);
+    vel[i] = w * vR + (1 - w) * vL;
+  }
+  const v = blurCyclic(vel, N * .02);
+  DT.py = blurCyclic(py, N * .015);
+  DT.tab[0] = 0;
+  for (let i = 0; i < N; i++) DT.tab[i + 1] = DT.tab[i] + v[i];
+  DT.tot = DT.tab[N];
 }
 function Dfun(q) {
   const f = Math.floor(q), r = (q - f) * DT.N, i = Math.floor(r), t = r - i;
   return f * DT.tot + lerp(DT.tab[i], DT.tab[Math.min(i + 1, DT.N)], t);
+}
+const Dvel = q => (Dfun(q + .005) - Dfun(q - .005)) / .01;
+function pelvisY(q) {
+  const r = mod(q) * DT.N, i = Math.floor(r) % DT.N;
+  return lerp(DT.py[i], DT.py[(i + 1) % DT.N], r - Math.floor(r));
 }
 
 /* ---------- full-body pose ---------- */
@@ -160,7 +185,11 @@ function crutch(p, C, sh, side, ws, we) {
   else {
     const t = (q - lift) / (we - ws);
     const xl = XPLANT + (Dfun(lift) - Dfun(we));
-    x = lerp(xl, XPLANT, easeIO(t)); y = .09 * Math.sin(Math.PI * t);
+    // Hermite swing whose end tangents match the planted tip's drift, so in the
+    // world the crutch leaves and meets the floor at rest; the lift eases in and out too.
+    const T = we - ws, m0 = Dvel(lift) * T, m1 = Dvel(we) * T, t2 = t * t, t3 = t2 * t;
+    x = (2 * t3 - 3 * t2 + 1) * xl + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * XPLANT + (t3 - t2) * m1;
+    y = 1.44 * t2 * (1 - t) * (1 - t);
   }
   C.tip.set(x, y, side * .31);
   _v.set(sh.x + .03, sh.y - .55, side * .27).sub(C.tip).normalize();
@@ -172,7 +201,7 @@ function crutch(p, C, sh, side, ws, we) {
 }
 function computePose(p, amp, P) {
   legsAt(p, amp);
-  const py = -Math.min(_R.hy, _R.ty, _L.hy, _L.ty) + SOLE;
+  const py = pelvisY(p);
   P.py = py;
   setLeg(P.R, _R, py, -HIPW);
   setLeg(P.L, _L, py, HIPW);
@@ -202,7 +231,7 @@ renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-const BG = new THREE.Color('#07080a');
+const BG = new THREE.Color('#120d24');
 const scene = new THREE.Scene();
 scene.background = BG;
 scene.fog = new THREE.Fog(BG, 7, 17);
@@ -213,34 +242,35 @@ scene.environmentIntensity = .38;
 const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, .05, 60);
 camera.position.set(3.4, 1.25, 4.6);
 
-const key = new THREE.DirectionalLight('#fff4ea', 1.9);
+const key = new THREE.DirectionalLight('#f2f6ff', 1.9);
 key.position.set(2.5, 5, 3.5);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
 Object.assign(key.shadow.camera, { left: -2.5, right: 2.5, top: 2.5, bottom: -2.5, near: .5, far: 14 });
 key.shadow.bias = -.0004; key.shadow.normalBias = .02; key.shadow.radius = 5;
 scene.add(key);
-const rim = new THREE.DirectionalLight('#ff8a5c', 2.2);
+const rim = new THREE.DirectionalLight('#1da099', 2.6);
 rim.position.set(-4, 2.4, -3); scene.add(rim);
-const rim2 = new THREE.DirectionalLight('#9bb8ff', .9);
+const rim2 = new THREE.DirectionalLight('#b0ca62', .7);
 rim2.position.set(-2, 3, 4); scene.add(rim2);
-scene.add(new THREE.HemisphereLight('#8ea3c4', '#0a0806', .35));
+const hemi = new THREE.HemisphereLight('#9fb6d8', '#120d24', .4); scene.add(hemi);
 
 loader.set(.3);
 
 /* ============================================================
    Materials
    ============================================================ */
-const ACCENT = new THREE.Color('#ff5b1f');
+const ACCENT = new THREE.Color('#b0ca62');
+const TEAL = new THREE.Color('#1da099');
 const MAT = {
-  body: new THREE.MeshPhysicalMaterial({ color: '#d8d2c9', roughness: .52, clearcoat: .25, clearcoatRoughness: .5, sheen: .4, sheenColor: '#ffffff', sheenRoughness: .6 }),
-  carbon: new THREE.MeshPhysicalMaterial({ color: '#15171b', roughness: .32, metalness: .25, clearcoat: 1, clearcoatRoughness: .12 }),
+  body: new THREE.MeshPhysicalMaterial({ color: '#cbd3dd', roughness: .52, clearcoat: .25, clearcoatRoughness: .5, sheen: .4, sheenColor: '#ffffff', sheenRoughness: .6 }),
+  carbon: new THREE.MeshPhysicalMaterial({ color: '#1d1633', roughness: .32, metalness: .25, clearcoat: 1, clearcoatRoughness: .12 }),
   alu: new THREE.MeshStandardMaterial({ color: '#a9aeb6', roughness: .28, metalness: 1 }),
-  strap: new THREE.MeshStandardMaterial({ color: '#2a2d33', roughness: .92, side: THREE.DoubleSide }),
-  shoe: new THREE.MeshStandardMaterial({ color: '#16181b', roughness: .75 }),
+  strap: new THREE.MeshStandardMaterial({ color: '#2c2748', roughness: .92, side: THREE.DoubleSide }),
+  shoe: new THREE.MeshStandardMaterial({ color: '#171328', roughness: .75 }),
   accent: new THREE.MeshStandardMaterial({ color: ACCENT, emissive: ACCENT, emissiveIntensity: 2.4, roughness: .4 }),
   crutch: new THREE.MeshStandardMaterial({ color: '#8d939c', roughness: .3, metalness: .9 }),
-  grip: new THREE.MeshStandardMaterial({ color: '#202226', roughness: .8 }),
+  grip: new THREE.MeshStandardMaterial({ color: '#231d3a', roughness: .8 }),
 };
 for (const m of Object.values(MAT)) m.userData.base = m.opacity;
 
@@ -382,13 +412,17 @@ function radialTex(inner = 'rgba(255,255,255,1)', outer = 'rgba(255,255,255,0)')
   g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
-const pool = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), new THREE.MeshBasicMaterial({ map: radialTex('rgba(255,120,70,.55)', 'rgba(255,120,70,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .35 }));
+const pool = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), new THREE.MeshBasicMaterial({ map: radialTex('rgba(29,160,153,.7)', 'rgba(29,160,153,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .35 }));
 pool.rotation.x = -Math.PI / 2; pool.position.y = .002; scene.add(pool);
+
+// light theme: a pale-teal floor pool so the white figure separates from the backdrop
+const stage = new THREE.Mesh(new THREE.CircleGeometry(9, 64), new THREE.MeshBasicMaterial({ map: radialTex('rgba(150,205,202,1)', 'rgba(150,205,202,0)'), transparent: true, depthWrite: false, opacity: 0 }));
+stage.rotation.x = -Math.PI / 2; stage.position.y = .0005; stage.scale.set(1.2, .8, 1); stage.visible = false; scene.add(stage);
 
 /* ---------- ground grid (scrolls with the stance foot) ---------- */
 const gridMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false,
-  uniforms: { uOffset: { value: 0 }, uOpacity: { value: 1 }, uColor: { value: new THREE.Color('#d9d4cc') }, uAccent: { value: ACCENT } },
+  uniforms: { uOffset: { value: 0 }, uOpacity: { value: 1 }, uColor: { value: new THREE.Color('#c8d5dc') }, uAccent: { value: TEAL } },
   vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`,
   fragmentShader: `
     uniform float uOffset, uOpacity; uniform vec3 uColor, uAccent; varying vec3 vW;
@@ -413,17 +447,17 @@ grid.rotation.x = -Math.PI / 2; grid.position.y = .0015; scene.add(grid);
 /* ---------- gait lab backdrop + angle arcs ---------- */
 const labMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false,
-  uniforms: { uOpacity: { value: 0 } },
+  uniforms: { uOpacity: { value: 0 }, uColor: { value: new THREE.Color('#c7d6db') } },
   vertexShader: `varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
   fragmentShader: `
-    uniform float uOpacity; varying vec3 vW;
+    uniform float uOpacity; uniform vec3 uColor; varying vec3 vW;
     float gl(vec2 p,float s){ vec2 q=p/s; vec2 g=abs(fract(q-.5)-.5)/fwidth(q); return 1.-min(min(g.x,g.y),1.); }
     void main(){
       vec2 p = vW.xy;
       float a = gl(p,.1)*.05 + gl(p,.5)*.16;
       float fade = smoothstep(3.2,.6,abs(p.x)) * smoothstep(2.3,1.6,p.y);
       float axis = (1.-min(abs(p.x)/fwidth(p.x),1.))*.35;
-      gl_FragColor = vec4(vec3(.85,.82,.78), (a+axis)*fade*uOpacity);
+      gl_FragColor = vec4(uColor, (a+axis)*fade*uOpacity);
     }`,
 });
 const lab = new THREE.Mesh(new THREE.PlaneGeometry(7, 2.6), labMat);
@@ -446,7 +480,7 @@ function lineColors(l) { return l.geometry.attributes.instanceColorStart.data; }
 
 const ARC_N = 28;
 const kneeArc = fatLine(ARC_N + 2, { color: ACCENT, linewidth: 2 });
-const hipArc = fatLine(ARC_N + 2, { color: new THREE.Color('#8fb7ff'), linewidth: 2 });
+const hipArc = fatLine(ARC_N + 2, { color: TEAL, linewidth: 2 });
 scene.add(kneeArc, hipArc);
 function writeArc(line, c, a0, a1, r, z) {
   const buf = linePositions(line), arr = buf.array;
@@ -477,7 +511,7 @@ const dotTex = radialTex('rgba(255,255,255,1)', 'rgba(255,255,255,0)');
 const ghosts = [];
 const ghostPose = makePose();
 for (let i = 0; i < GHOSTS; i++) {
-  const l = fatLine(NSEG, { color: new THREE.Color('#f3efe8'), linewidth: 1.6, blending: THREE.AdditiveBlending });
+  const l = fatLine(NSEG, { color: new THREE.Color('#e8f0f4'), linewidth: 1.6, blending: THREE.AdditiveBlending });
   const pg = new THREE.BufferGeometry();
   pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NJ * 3), 3));
   const pts = new THREE.Points(pg, new THREE.PointsMaterial({ color: ACCENT, size: 7, sizeAttenuation: false, map: dotTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
@@ -500,8 +534,8 @@ function writeGhost(g, P, dx, op) {
 /* ---------- motion trails (ankle + knee paths, in ground coordinates) ---------- */
 const TRAIL_N = 110;
 const trails = [
-  { get: P => P.L.ankle, pts: [], line: fatLine(TRAIL_N - 1, { vertexColors: true, linewidth: 2.2, blending: THREE.AdditiveBlending }), col: new THREE.Color('#ff5b1f') },
-  { get: P => P.L.knee, pts: [], line: fatLine(TRAIL_N - 1, { vertexColors: true, linewidth: 1.4, blending: THREE.AdditiveBlending }), col: new THREE.Color('#ffc2a6') },
+  { get: P => P.L.ankle, pts: [], line: fatLine(TRAIL_N - 1, { vertexColors: true, linewidth: 2.2, blending: THREE.AdditiveBlending }), col: new THREE.Color('#1da099') },
+  { get: P => P.L.knee, pts: [], line: fatLine(TRAIL_N - 1, { vertexColors: true, linewidth: 1.4, blending: THREE.AdditiveBlending }), col: new THREE.Color('#b0ca62') },
 ];
 trails.forEach(t => scene.add(t.line));
 
@@ -567,7 +601,7 @@ const globeMats = [];
   g.setAttribute('aHi', new THREE.Float32BufferAttribute(hi, 1));
   const m = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false,
-    uniforms: { uSize: { value: 10 * DPR }, uOpacity: { value: 0 }, uC1: { value: new THREE.Color('#cfcac2') }, uC2: { value: ACCENT } },
+    uniforms: { uSize: { value: 10 * DPR }, uOpacity: { value: 0 }, uC1: { value: new THREE.Color('#c8d5dc') }, uC2: { value: ACCENT } },
     vertexShader: `attribute float aHi; varying float vA; varying float vHi; uniform float uSize;
       void main(){ vec4 mv = modelViewMatrix*vec4(position,1.); vec3 n = normalize(normalMatrix*position);
         vA = smoothstep(-.05,.45,n.z); vHi = aHi; gl_PointSize = uSize*(1.+aHi*.7)/-mv.z; gl_Position = projectionMatrix*mv; }`,
@@ -576,16 +610,17 @@ const globeMats = [];
         float a = smoothstep(.5,.15,d)*vA*uOpacity*(.5+vHi*.5); gl_FragColor = vec4(mix(uC1,uC2,vHi), a); }`,
   });
   globeMats.push(m);
-  gSpin.add(new THREE.Points(g, m));
+  const dots = new THREE.Points(g, m); dots.renderOrder = 2; gSpin.add(dots);
 
-  const core = new THREE.Mesh(new THREE.SphereGeometry(.985, 64, 48), new THREE.MeshBasicMaterial({ color: '#0b0d10', transparent: true, opacity: 0 }));
-  globeMats.push(core.material); core.material.userData.max = .95;
+  const core = new THREE.Mesh(new THREE.SphereGeometry(.985, 64, 48), new THREE.MeshBasicMaterial({ color: '#16112c', transparent: true, opacity: 0 }));
+  globeMats.push(core.material); core.material.userData.max = .95; core.renderOrder = -1;
   globe.add(core);
   const atm = new THREE.Mesh(new THREE.SphereGeometry(1.16, 64, 48), new THREE.ShaderMaterial({
     side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uOpacity: { value: 0 } },
+    uniforms: { uOpacity: { value: 0 }, uLight: { value: 0 } },
     vertexShader: `varying vec3 vN; void main(){ vN = normalize(normalMatrix*normal); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
-    fragmentShader: `uniform float uOpacity; varying vec3 vN; void main(){ float d = abs(vN.z); float i = pow(smoothstep(0.,.5,d), 4.)*(1.-smoothstep(.5,.62,d)); gl_FragColor = vec4(vec3(1.,.5,.3)*i*uOpacity*.3, 1.); }`,
+    fragmentShader: `uniform float uOpacity, uLight; varying vec3 vN; void main(){ float d = abs(vN.z); float i = pow(smoothstep(0.,.5,d), 4.)*(1.-smoothstep(.5,.62,d)); vec3 c = vec3(.11,.63,.6);
+      gl_FragColor = uLight > .5 ? vec4(c, i*uOpacity*.5) : vec4(c*i*uOpacity*.55, 1.); }`,
   }));
   globeMats.push(atm.material);
   globe.add(atm);
@@ -598,7 +633,7 @@ const globeMats = [];
     pin.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(.0025, .0025, .07, 6), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0 }));
     stem.position.y = .035; pin.add(stem);
-    const headM = new THREE.Mesh(new THREE.SphereGeometry(.011, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffd2bf', transparent: true, opacity: 0 }));
+    const headM = new THREE.Mesh(new THREE.SphereGeometry(.011, 12, 8), new THREE.MeshBasicMaterial({ color: '#e6f0c4', transparent: true, opacity: 0 }));
     headM.position.y = .07; pin.add(headM);
     const ring = new THREE.Mesh(new THREE.RingGeometry(.018, .022, 48), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
     ring.rotation.x = -Math.PI / 2; ring.position.y = .002; pin.add(ring);
@@ -611,7 +646,7 @@ const globeMats = [];
         const v = hq.clone().lerp(n, t).normalize().multiplyScalar(1 + Math.sin(Math.PI * t) * .09 * hq.distanceTo(n) * 3);
         pts.push(v);
       }
-      const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, .0028, 6), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false }));
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, .0028, 6), new THREE.MeshBasicMaterial({ color: TEAL, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false }));
       tube.userData.count = tube.geometry.index.count;
       tube.geometry.setDrawRange(0, 0);
       gSpin.add(tube); s.arc = tube;
@@ -642,6 +677,68 @@ const vignette = new ShaderPass({
 composer.addPass(vignette);
 
 /* ============================================================
+   Theme (dark / light)
+   ============================================================ */
+const TRAIL_BASE = new THREE.Color(0, 0, 0);
+const THEMES = {
+  dark: {
+    bg: '#120d24', stage: 0, rim: 2.6, body: '#cbd3dd', grid: '#c8d5dc', lab: '#c7d6db', ghost: '#e8f0f4', globeDot: '#c8d5dc', core: '#16112c',
+    additive: true, tone: THREE.ACESFilmicToneMapping, exposure: 1.05, ghostBoost: 1, bloom: .55, vignette: .5, emissive: 2.4, gridOpacity: 1, key: 1.9, hemi: .4, trailBase: '#000000', accent: '#b0ca62',
+  },
+  light: {
+    bg: '#dde7eb', body: '#fbfcfd', grid: '#21193c', lab: '#21193c', ghost: '#21193c', globeDot: '#21193c', core: '#eaf2f4', stage: 1, rim: 3.2,
+    additive: false, tone: THREE.NeutralToneMapping, exposure: 1, ghostBoost: 1.8, bloom: 0, vignette: .14, emissive: .9, gridOpacity: 1.6, key: 2.8, hemi: .55, trailBase: '#dde7eb', accent: '#8fae34',
+  },
+};
+let themeName = 'dark', ghostBoost = 1, gridBoost = 1;
+function applyTheme(name) {
+  const T = THEMES[name] || THEMES.dark;
+  themeName = THEMES[name] ? name : 'dark';
+  document.documentElement.dataset.theme = themeName;
+  BG.set(T.bg); scene.fog.color.set(T.bg);
+  MAT.body.color.set(T.body);
+  MAT.accent.emissiveIntensity = T.emissive;
+  key.intensity = T.key; hemi.intensity = T.hemi; rim.intensity = T.rim;
+  stage.material.opacity = T.stage; stage.visible = T.stage > 0; gridBoost = T.gridOpacity;
+  shadowPlane.material.color.set(T.additive ? '#000000' : '#21193c');
+  renderer.toneMapping = T.tone; renderer.toneMappingExposure = T.exposure;
+  ghostBoost = T.ghostBoost;
+  gridMat.uniforms.uColor.value.set(T.grid);
+  labMat.uniforms.uColor.value.set(T.lab);
+  bloom.strength = T.bloom; bloom.enabled = T.bloom > 0;
+  vignette.uniforms.uStrength.value = T.vignette;
+  TRAIL_BASE.set(T.trailBase);
+  const blend = T.additive ? THREE.AdditiveBlending : THREE.NormalBlending;
+  const setBlend = m => { if (m.blending !== blend) { m.blending = blend; m.needsUpdate = true; } };
+  ghosts.forEach(g => { g.l.material.color.set(T.ghost); setBlend(g.l.material); setBlend(g.pts.material); g.pts.material.color.set(T.accent); });
+  trails.forEach(t => setBlend(t.line.material));
+  prints.forEach(p => setBlend(p.m.material));
+  setBlend(pool.material);
+  globeMats[0].uniforms.uC1.value.set(T.globeDot); globeMats[0].userData.max = T.additive ? 1 : 2.2;
+  globeMats[1].color.set(T.core);
+  globeMats[2].uniforms.uLight.value = T.additive ? 0 : 1; setBlend(globeMats[2]);
+  SITES.forEach(s => s.arc && setBlend(s.arc.material));
+  const btn = $('#theme-toggle');
+  if (btn) btn.setAttribute('aria-label', themeName === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+}
+// Default follows the browser / OS colour scheme. A manual toggle overrides it for this tab only;
+// ?theme=light|dark in the URL forces a mode (handy for sharing a specific version).
+{
+  const mq = matchMedia('(prefers-color-scheme: light)');
+  const systemTheme = () => (mq.matches ? 'light' : 'dark');
+  const forced = new URLSearchParams(location.search).get('theme');
+  let manual = null;
+  try { manual = sessionStorage.getItem('able-theme'); localStorage.removeItem('able-theme'); } catch (e) {}
+  applyTheme(forced || manual || systemTheme());
+  mq.addEventListener('change', () => { if (!forced && !manual) applyTheme(systemTheme()); });
+  $('#theme-toggle').addEventListener('click', () => {
+    manual = themeName === 'dark' ? 'light' : 'dark';
+    try { sessionStorage.setItem('able-theme', manual); } catch (e) {}
+    applyTheme(manual);
+  });
+}
+
+/* ============================================================
    DOM: labels, leaders, gait panel, outcomes, calculator, sites
    ============================================================ */
 const labelsEl = $('#labels'), leadersEl = $('#leaders');
@@ -651,7 +748,7 @@ SITES.forEach(s => { if (s.label) s.el = mkLabel(`${s.n}<small>${s.s}</small>`, 
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 const callouts = $$('#callouts li').map(li => {
-  const line = document.createElementNS(SVGNS, 'line');
+  const line = document.createElementNS(SVGNS, 'polyline');
   const dot = document.createElementNS(SVGNS, 'circle'); dot.setAttribute('r', 3.5);
   const halo = document.createElementNS(SVGNS, 'circle'); halo.setAttribute('r', 9); halo.setAttribute('class', 'halo');
   leadersEl.append(line, halo, dot);
@@ -670,7 +767,7 @@ const PHASES = [
   [.87, 'Terminal swing', 'The knee motor extends the leg, ready for the next heel contact.'],
 ];
 const phaseIdx = c => { let i = 0; PHASES.forEach((p, j) => { if (c >= p[0]) i = j; }); return i; };
-const gp = { phase: $('#gp-phase'), pct: $('#gp-pct'), desc: $('#gp-desc'), cursor: $('#gp-cursor'), kdot: $('#gp-kdot'), hdot: $('#gp-hdot'), kv: $('#gp-knee-v'), hv: $('#gp-hip-v'), scrub: $('#gp-scrub'), list: $('#gp-phases'), last: -1 };
+const gp = { phase: $('#gp-phase'), desc: $('#gp-desc'), cursor: $('#gp-cursor'), kdot: $('#gp-kdot'), hdot: $('#gp-hdot'), kv: $('#gp-knee-v'), hv: $('#gp-hip-v'), scrub: $('#gp-scrub'), stepN: $('#gp-step-n'), last: -1 };
 const cx = c => 10 + c * 300, cy = deg => 118 - deg * (100 / 60);
 {
   let dk = '', dh = '';
@@ -684,11 +781,6 @@ const cx = c => 10 + c * 300, cy = deg => 118 - deg * (100 / 60);
   $('#gp-stance').setAttribute('d', `M${cx(0)},8H${cx(.6)}V128H${cx(0)}Z`);
   const gg = $('.gp-grid');
   for (const deg of [0, 20, 40, 60]) { const l = document.createElementNS(SVGNS, 'line'); l.setAttribute('x1', 10); l.setAttribute('x2', 310); l.setAttribute('y1', cy(deg)); l.setAttribute('y2', cy(deg)); gg.appendChild(l); }
-  PHASES.forEach((p, i) => {
-    const li = document.createElement('li'); li.textContent = p[1]; li.dataset.i = i;
-    li.addEventListener('click', () => scrollToGait(p[0] + .01));
-    gp.list.appendChild(li);
-  });
 }
 
 // outcomes ticks
@@ -706,6 +798,36 @@ const manifestoEl = $('[data-words]');
 const HL = new Set(['eye', 'level', 'hug', 'first', 'step', 'thousandth.']);
 manifestoEl.innerHTML = manifestoEl.textContent.trim().split(/\s+/).map(w => `<span class="w${HL.has(w.replace(/[,]/g, '')) ? ' hl' : ''}">${w}</span>`).join(' ');
 const words = [...manifestoEl.querySelectorAll('.w')];
+// hero photos: auto-advance with a wipe while the hero is on screen
+const MF_HOLD = 2;
+const mf = { el: $('.mf-photos'), imgs: $$('.mf-frame img'), n: $('.mf-n'), cap: $('.mf-cap'), cur: -1, t: 0,
+  caps: ['Eye level', 'A hug', 'First step', 'The thousandth'] };
+mf.el.style.setProperty('--mf-hold', MF_HOLD + 's');
+// Masked per-letter roll: the old line leaves upward as the new one rises in, staggered.
+function rollText(el, text, animate, dir = 1, words = false) {
+  const line = document.createElement('span');
+  line.className = 'rl-line' + (words ? ' rl-words' : '') + (dir < 0 ? ' rev' : '');
+  line.setAttribute('aria-hidden', 'true');
+  line.innerHTML = words
+    ? text.split(' ').map((w, i) => `<span class="wm"><span class="ch" style="--i:${i}">${w}</span></span>`).join(' ')
+    : [...text].map((c, i) => `<span class="ch" style="--i:${i}">${c === ' ' ? '&nbsp;' : c}</span>`).join('');
+  // real text for screen readers; the animated copies are aria-hidden
+  let sr = el.querySelector('.sr-only');
+  if (!sr) { sr = document.createElement('span'); sr.className = 'sr-only'; }
+  sr.textContent = text;
+  const old = el.querySelectorAll('.rl-line:not(.out)');
+  if (!animate || REDUCED) { el.replaceChildren(sr, line); return; }
+  old.forEach(o => { o.classList.add('out'); o.classList.toggle('rev', dir < 0); setTimeout(() => o.remove(), 1400); });
+  line.classList.add('in');
+  el.appendChild(line);
+}
+function showPhoto(k, now) {
+  const prev = mf.cur;
+  mf.cur = k; mf.t = now;
+  mf.imgs.forEach((im, i) => { im.classList.toggle('on', i === k); im.classList.toggle('past', i === prev); });
+  rollText(mf.n, String(k + 1).padStart(2, '0'), prev < 0 ? 0 : 1); rollText(mf.cap, mf.caps[k], prev < 0 ? 0 : 1);
+  mf.el.classList.remove('tick'); void mf.el.offsetWidth; if (!REDUCED) mf.el.classList.add('tick');
+}
 
 // throughput calculator
 {
@@ -731,6 +853,42 @@ const words = [...manifestoEl.querySelectorAll('.w')];
   };
   ids.forEach(k => inp[k].addEventListener('input', calc));
   calc();
+}
+
+// footer: the knee-angle curve from the gait model, drawn through the wordmark on a loop
+{
+  const path = $('#fm-gait'), dot = $('#fm-dot');
+  const N = 240, cycles = 3, pts = [];
+  for (let i = 0; i <= N; i++) {
+    const u = i / N;
+    pts.push([u * 1000, 205 - KNEE(u * cycles) * R2D * 2.3]);
+  }
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('');
+  path.setAttribute('d', d); $('#fm-trace').setAttribute('d', d);
+  const len = path.getTotalLength();
+  path.style.strokeDasharray = `${len * .22} ${len}`;
+  let t0 = performance.now();
+  const loop = now => {
+    const u = ((now - t0) / 7000) % 1;
+    path.style.strokeDashoffset = String(len * .22 - u * (len * 1.22));
+    const head = path.getPointAtLength(Math.min(len, u * len * 1.22));
+    dot.setAttribute('cx', head.x); dot.setAttribute('cy', head.y);
+    dot.style.opacity = u * 1.22 > 1 ? 0 : 1;
+    requestAnimationFrame(loop);
+  };
+  if (REDUCED) { path.style.strokeDasharray = 'none'; dot.style.display = 'none'; } else requestAnimationFrame(loop);
+
+  const clock = $('#foot-clock');
+  const fmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' });
+  const tickClock = () => { clock.textContent = fmt.format(new Date()); };
+  tickClock(); setInterval(tickClock, 15000);
+
+  $('#foot-news').addEventListener('submit', e => {
+    e.preventDefault();
+    const msg = $('#foot-news-msg'), v = $('#foot-email').value.trim();
+    msg.classList.toggle('ok', /.+@.+\..+/.test(v));
+    msg.textContent = /.+@.+\..+/.test(v) ? 'Thanks. (Concept: this form is not connected yet.)' : 'Please enter a valid email address.';
+  });
 }
 
 // review mode (highlights copy that still needs ABLE's input)
@@ -790,44 +948,55 @@ gp.scrub.addEventListener('input', () => {
   lenis.scrollTo(s.top + (gp.scrub.value / 1000 * .92 + .04) * (s.holdEnd - s.top), { immediate: true });
 });
 
-const KEYS = ['cx', 'cy', 'cz', 'tx', 'ty', 'tz', 'fov', 'fig', 'ghost', 'trail', 'lab', 'explode', 'xray', 'globe', 'dim', 'prints', 'grid', 'pool'];
+const KEYS = ['cx', 'cy', 'cz', 'tx', 'ty', 'tz', 'fov', 'sx', 'sy', 'fig', 'ghost', 'trail', 'lab', 'explode', 'xray', 'globe', 'dim', 'prints', 'grid', 'pool'];
 function params(name, t, o = {}) {
-  Object.assign(o, { cx: 3.4, cy: 1.25, cz: 4.6, tx: -.75, ty: .95, tz: 0, fov: 30, fig: 1, ghost: 0, trail: 0, lab: 0, explode: 0, xray: 0, globe: 0, dim: 0, prints: 0, grid: 1, pool: 1 });
+  Object.assign(o, { cx: 3.4, cy: 1.25, cz: 4.6, tx: -.75, ty: .95, tz: 0, fov: 30, sx: 0, sy: 0, fig: 1, ghost: 0, trail: 0, lab: 0, explode: 0, xray: 0, globe: 0, dim: 0, prints: 0, grid: 1, pool: 1 });
   const mob = isMobile();
   switch (name) {
     case 'hero':
-      Object.assign(o, { cx: 3.9, cy: mob ? .7 : 1.4, cz: 5.4, tx: mob ? -.4 : -.95, ty: mob ? .1 : .92, ghost: 1, trail: 1 });
+      Object.assign(o, { cx: 3.9, cy: 1.4, cz: 5.4, tx: mob ? -.55 : -.95, ty: mob ? .95 : .92, ghost: 1, trail: 1 });
       break;
     case 'manifesto': {
       const e = smooth(t);
-      Object.assign(o, { cx: lerp(3.0, 2.1, e), cy: lerp(1.1, .8, e), cz: lerp(3.9, 2.8, e), tx: lerp(-.3, -.1, e), ty: lerp(.85, .6, e), ghost: .3 * (1 - e), trail: 1, dim: .5 });
+      Object.assign(o, { dim: mob ? 0 : .5, cx: lerp(3.0, 2.1, e), cy: lerp(1.1, .8, e), cz: lerp(3.9, 2.8, e), tx: lerp(-.3, -.1, e), ty: lerp(.85, .6, e), ghost: .3 * (1 - e), trail: 1 });
+      if (!mob) {
+        // pan sideways so the figure sits right of the copy block (35% of the half-frame)
+        const dx = o.cx - o.tx, dz = o.cz - o.tz, h = Math.hypot(dx, dz), d = Math.hypot(dx, o.cy - o.ty, dz);
+        const s = .35 * Math.tan(o.fov * Math.PI / 360) * d * innerWidth / innerHeight;
+        const rx = dz / h, rz = -dx / h;
+        o.cx -= rx * s; o.tx -= rx * s; o.cz -= rz * s; o.tz -= rz * s;
+      }
       break;
     }
     case 'gait':
-      Object.assign(o, { cx: mob ? 0 : .15, cy: mob ? .6 : 1.0, cz: 6.6, tx: mob ? 0 : .15, ty: mob ? .45 : .92, fov: 26, lab: 1, pool: .4 });
+      Object.assign(o, { cx: mob ? 0 : isMid() ? -.05 : .5, cy: mob ? .5 : 1.0, cz: mob ? 8.4 : 6.6, tx: mob ? 0 : isMid() ? -.05 : .5, ty: mob ? .34 : .92, fov: 26, lab: 1, pool: .4 });
       break;
     case 'device': {
       const a = lerp(-.25, 1.05, easeIO(t)), R = 3.5;
       const tx = mob ? 0 : .05;
-      Object.assign(o, { cx: tx + Math.sin(a) * R, cy: 1.1 + Math.sin(t * Math.PI) * .25, cz: Math.cos(a) * R, tx, ty: .8, fov: 30,
-        explode: smooth(clamp((t - .04) / .32)), xray: clamp(t * 5) * .82, pool: .6 });
+      Object.assign(o, { cx: tx + Math.sin(a) * R, cy: 1.1 + Math.sin(t * Math.PI) * .25, cz: Math.cos(a) * R, tx, ty: mob ? 1.0 : .8, fov: 30,
+        explode: smooth(clamp((t - .04) / .32)), xray: clamp(t * 5) * .95, pool: .6, sx: mob ? 0 : .035, sy: mob ? 0 : .07 });
       break;
     }
     case 'outcomes':
-      Object.assign(o, { cx: -.7, cy: 2.0, cz: 5.3, tx: mob ? .5 : .05, ty: mob ? .35 : .62, prints: 1, trail: .35, ghost: 0 });
+      Object.assign(o, { cx: -.7, cy: 2.0, cz: 5.3, tx: mob ? .5 : isMid() ? -.45 : .05, ty: mob ? .35 : .62, prints: 1, trail: .35, ghost: 0 });
       break;
     case 'clinic':
-      Object.assign(o, { cx: 2.6, cy: 1.2, cz: 4.4, tx: 0, ty: .95, dim: .9 });
+      Object.assign(o, { cx: 2.6, cy: 1.2, cz: 4.4, tx: 0, ty: .95, dim: .9, fig: 0, ghost: 0, trail: 0, grid: 0, pool: 0 });
       break;
     case 'network': {
-      Object.assign(o, { cx: 0, cy: 1.0, cz: mob ? 6.8 : 5.6, tx: mob ? 0 : -1.25, ty: mob ? 2.0 : 1.0, fig: 0, globe: 1, grid: 0, pool: 0 });
+      // push in on Europe, peak just past mid-section, then pull back out
+      const z = innerWidth < 760 ? 0 : Math.pow(Math.sin(Math.PI * clamp((t - .05) / .9)), 1.4);
+      Object.assign(o, { cx: 0, cy: 1.0, cz: lerp(mob ? (innerWidth < 760 ? 7.4 : 6.8) : 5.6, mob ? 5.0 : 3.15, z), tx: lerp(mob ? 0 : -1.25, mob ? 0 : -.7, z), ty: lerp(mob ? (innerWidth < 760 ? 2.65 + clamp((844 - innerHeight) / 844) * 1.4 : 2.1) : 1.0, mob ? (innerWidth < 760 ? 2.35 : 1.9) : 1.05, z), fig: 0, globe: 1, grid: 0, pool: 0 });
       break;
     }
     case 'impact':
-      Object.assign(o, { cx: 4.6, cy: 1.1, cz: mob ? 1.5 : 3.2, tx: 0, ty: 1.0, tz: mob ? -.7 : 1.45, ghost: 1, dim: .55, trail: 1 });
+      Object.assign(o, { cx: 0, cy: 1.0, cz: mob ? 6.8 : 5.6, tx: mob ? 0 : -1.25, ty: 1.0, fig: 0, ghost: 0, trail: 0, grid: 0, pool: 0, globe: 0, dim: .55 });
       break;
   }
-  if (mob) { o.cx = o.tx + (o.cx - o.tx) * 1.45; o.cz = o.tz + (o.cz - o.tz) * 1.45; o.cy = o.ty + (o.cy - o.ty) * 1.2; }
+  if (isMid() && (name === 'gait' || name === 'device' || name === 'outcomes')) { o.cx = o.tx + (o.cx - o.tx) * 1.18; o.cz = o.tz + (o.cz - o.tz) * 1.18; }
+  const k = innerWidth < 760 ? 1.45 : 1.15;
+  if (mob) { o.cx = o.tx + (o.cx - o.tx) * k; o.cz = o.tz + (o.cz - o.tz) * k; o.cy = o.ty + (o.cy - o.ty) * 1.2; }
   return o;
 }
 const _pa = {}, _pb = {}, cur = {};
@@ -847,6 +1016,7 @@ function directorAt(y) {
 /* ============================================================
    Main loop
    ============================================================ */
+const footEl = $('.foot');
 const pose = makePose();
 const state = { phase: .12, amp: 1, cadence: .5, ground: 0, speed: 0, mode: 'walk', section: null, sess: 1 };
 const mouse = { x: 0, y: 0, sx: 0, sy: 0 };
@@ -902,7 +1072,7 @@ function tick() {
   state.cadence = damp(state.cadence, cadT, 3, dt);
   ensureDTable(state.amp);
 
-  const gd = groundDelta(prevPhase, state.phase, state.amp);
+  const gd = Dfun(state.phase) - Dfun(prevPhase);
   state.ground += gd;
   state.speed = damp(state.speed, dt > 0 ? -gd / dt : 0, 4, dt);
 
@@ -932,14 +1102,15 @@ function tick() {
 
   // ---- ground
   gridMat.uniforms.uOffset.value = state.ground;
-  gridMat.uniforms.uOpacity.value = cur.grid;
+  gridMat.uniforms.uOpacity.value = cur.grid * gridBoost;
+  stage.material.opacity = (themeName === 'light' ? 1 : 0) * cur.fig;
   grid.visible = cur.grid > .01;
 
   // ---- ghosts (chronophotograph)
   const gOn = cur.ghost * cur.fig;
   for (let i = 0; i < GHOSTS; i++) {
     const k = i + 1, lag = k * GHOST_DP;
-    const op = gOn * .5 * Math.pow(1 - i / GHOSTS, 1.5);
+    const op = Math.min(1, gOn * .5 * ghostBoost * Math.pow(1 - i / GHOSTS, 1.5));
     if (op > .003) {
       computePose(state.phase - lag, state.amp, ghostPose);
       writeGhost(ghosts[i], ghostPose, Dfun(state.phase) - Dfun(state.phase - lag) - k * GHOST_SPREAD * cur.ghost, op);
@@ -960,8 +1131,8 @@ function tick() {
       pos.array[o] = tr.pts[a * 3] + state.ground; pos.array[o + 1] = tr.pts[a * 3 + 1]; pos.array[o + 2] = tr.pts[a * 3 + 2];
       pos.array[o + 3] = tr.pts[b * 3] + state.ground; pos.array[o + 4] = tr.pts[b * 3 + 1]; pos.array[o + 5] = tr.pts[b * 3 + 2];
       const fa = Math.pow(a / (TRAIL_N - 1), 2) * on, fb = Math.pow(b / (TRAIL_N - 1), 2) * on;
-      col.array[o] = tr.col.r * fa; col.array[o + 1] = tr.col.g * fa; col.array[o + 2] = tr.col.b * fa;
-      col.array[o + 3] = tr.col.r * fb; col.array[o + 4] = tr.col.g * fb; col.array[o + 5] = tr.col.b * fb;
+      col.array[o] = lerp(TRAIL_BASE.r, tr.col.r, fa); col.array[o + 1] = lerp(TRAIL_BASE.g, tr.col.g, fa); col.array[o + 2] = lerp(TRAIL_BASE.b, tr.col.b, fa);
+      col.array[o + 3] = lerp(TRAIL_BASE.r, tr.col.r, fb); col.array[o + 4] = lerp(TRAIL_BASE.g, tr.col.g, fb); col.array[o + 5] = lerp(TRAIL_BASE.b, tr.col.b, fb);
     }
     pos.needsUpdate = col.needsUpdate = true;
     tr.line.visible = on > .01;
@@ -984,7 +1155,7 @@ function tick() {
     const age = pr.m.position.x;
     const intensity = lerp(.25, 1, (pr.s - 1) / 11);
     pr.m.material.opacity = clamp(1 + age / 5) * cur.prints * intensity;
-    pr.m.material.color.setRGB(lerp(.55, 1, intensity), lerp(.55, .36, intensity), lerp(.55, .12, intensity));
+    pr.m.material.color.setRGB(lerp(.2, .69, intensity), lerp(.5, .79, intensity), lerp(.55, .38, intensity));
     if (age < -6) pr.m.visible = false;
   }
 
@@ -1021,8 +1192,12 @@ function tick() {
         s.head.getWorldPosition(_w);
         const [sx, sy] = toScreen(_w);
         const facing = _v.copy(_w).sub(globe.position).normalize().dot(_d.copy(camera.position).sub(_w).normalize());
-        s.el.style.transform = `translate(${sx + s.off[0]}px, ${sy + s.off[1]}px)`;
-        s.el.style.opacity = reveal * clamp(facing * 3) * (isMobile() ? 0 : 1);
+        let lx = sx + s.off[0];
+        const lw = s.el.offsetWidth;
+        if (lx + lw > W - 12) lx = sx - lw - 14;
+        if (lx < 12) lx = 12;
+        s.el.style.transform = `translate(${lx}px, ${sy + s.off[1]}px)`;
+        s.el.style.opacity = reveal * clamp(facing * 3) * clamp((cur.globe - .6) / .4) * (isMobile() ? 0 : 1);
       }
     });
   } else SITES.forEach(s => s.el && (s.el.style.opacity = 0));
@@ -1032,8 +1207,20 @@ function tick() {
   mouse.sy = damp(mouse.sy, REDUCED ? 0 : mouse.y, 2.5, dt);
   camera.position.set(cur.cx + mouse.sx * .22, cur.cy - mouse.sy * .12, cur.cz);
   camera.lookAt(cur.tx, cur.ty, cur.tz);
-  if (Math.abs(camera.fov - cur.fov) > .01) { camera.fov = cur.fov; camera.updateProjectionMatrix(); }
+  // sx / sy slide the rendered scene right / up (fraction of the viewport) without moving the camera
+  const sx = Math.round(cur.sx * W), sy = Math.round(cur.sy * H), so = sx + ',' + sy;
+  if (Math.abs(camera.fov - cur.fov) > .01 || so !== camera.userData.sx) {
+    camera.fov = cur.fov; camera.userData.sx = so;
+    if (sx || sy) camera.setViewOffset(W, H, -sx, sy, W, H); else camera.clearViewOffset();
+    camera.updateProjectionMatrix();
+  }
   $('#dim').style.opacity = cur.dim;
+
+  const clin = sections.find(q => q.name === 'clinic');
+  const navLight = clin && y + 60 >= clin.top && y + 60 < clin.bottom;
+  if (navLight !== document.body.classList.contains('nav-light')) document.body.classList.toggle('nav-light', navLight);
+  const footTop = footEl.getBoundingClientRect().top;
+  document.body.classList.toggle('nav-onfoot', footTop < 70);
 
   // ---- DOM sync
   updateDOM(y, sec, kneeDeg, hipDeg, labOn);
@@ -1050,17 +1237,18 @@ function onSection(sec) {
   $('#chapter-t').textContent = sec.title;
   document.body.classList.toggle('hud-off', !['hero', 'manifesto'].includes(sec.name));
   $$('.nav-links a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + sec.name));
-  $('#hud-mode').textContent = { gait: 'Gait lab: scroll-driven', device: 'Device: exploded view', outcomes: 'Training: session model' }[sec.name] || 'Live gait model';
 }
 
 function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
   const c = mod(state.phase + .5); // left (near) leg gait cycle
-  if (frame % 3 === 0) {
-    $('#hud-cycle').textContent = Math.round(c * 100) + '%';
-    $('#hud-knee').textContent = kneeDeg.toFixed(0) + '°';
-    $('#hud-hip').textContent = hipDeg.toFixed(0) + '°';
-    $('#hud-speed').textContent = Math.max(0, state.speed).toFixed(2) + ' m/s';
-  }
+
+  // hero photos (paused off-screen; the timer restarts on return)
+  const now = performance.now() / 1000;
+  if (y < H * .8) {
+    if (mf.cur < 0) { showPhoto(0, now); mf.el.classList.add('on'); }
+    else if (mf.away) { mf.away = false; showPhoto(mf.cur, now); }
+    else if (!REDUCED && now - mf.t > MF_HOLD) showPhoto((mf.cur + 1) % mf.imgs.length, now);
+  } else mf.away = true;
 
   // manifesto
   if (sec.name === 'manifesto' || sec.name === 'hero') {
@@ -1072,10 +1260,14 @@ function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
   if (labOn > .02) {
     const pi = phaseIdx(c);
     if (pi !== gp.last) {
-      gp.last = pi; gp.phase.textContent = PHASES[pi][1]; gp.desc.textContent = PHASES[pi][2];
-      [...gp.list.children].forEach((li, i) => li.classList.toggle('on', i === pi));
+      // one step at a time: the name rolls forward or back with the scroll direction
+      const dir = gp.last < 0 || pi > gp.last || (gp.last === PHASES.length - 1 && pi === 0) ? 1 : -1;
+      rollText(gp.stepN, String(pi + 1).padStart(2, '0'), gp.last >= 0, dir);
+      rollText(gp.phase, PHASES[pi][1], gp.last >= 0, dir);
+      rollText(gp.desc, PHASES[pi][2], gp.last >= 0, dir, true);
+      gp.last = pi;
     }
-    gp.pct.textContent = Math.round(c * 100) + '%';
+    gp.scrub.style.setProperty('--p', (c * 100).toFixed(2) + '%');
     const x = cx(c);
     gp.cursor.setAttribute('x1', x); gp.cursor.setAttribute('x2', x);
     gp.kdot.setAttribute('cx', x); gp.kdot.setAttribute('cy', cy(kneeDeg));
@@ -1098,18 +1290,25 @@ function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
     const on = devT > .08 + i * .15 && sec.name === 'device';
     co.li.classList.toggle('on', on);
     if (on) curIdx = i;
-    const vis = on && devOn > .05 && !isMobile();
+  });
+  // one card at a time, floating beside its part with a short leader
+  callouts.forEach((co, i) => {
+    co.li.classList.toggle('cur', i === curIdx);
+    const vis = i === curIdx && devOn > .05 && !isMobile();
     co.line.style.opacity = co.dot.style.opacity = co.halo.style.opacity = vis ? devOn : 0;
     if (!vis) return;
     anchors[co.anchor].getWorldPosition(_w);
     const [ax, ay] = toScreen(_w);
-    const r = co.li.getBoundingClientRect();
-    const lx = r.left - 14, ly = r.top + 16;
-    co.line.setAttribute('x1', ax); co.line.setAttribute('y1', ay); co.line.setAttribute('x2', lx); co.line.setAttribute('y2', ly);
+    const w = co.li.offsetWidth, h = co.li.offsetHeight, gap = 64;
+    const right = ax + gap + w <= W - 24;                 // flip to the left side near the edge
+    const bx = right ? ax + gap : ax - gap - w;
+    const by = clamp(ay - 27, 84, H - h - 24);            // title row level with the part
+    co.li.style.transform = `translate3d(${bx.toFixed(1)}px,${by.toFixed(1)}px,0)`;
+    const ex = right ? bx : bx + w, ey = by + 27, kx = right ? ex - 20 : ex + 20;
+    co.line.setAttribute('points', `${(ax + (right ? 10 : -10)).toFixed(1)},${ay.toFixed(1)} ${kx.toFixed(1)},${ey.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}`);
     co.dot.setAttribute('cx', ax); co.dot.setAttribute('cy', ay);
     co.halo.setAttribute('cx', ax); co.halo.setAttribute('cy', ay);
   });
-  callouts.forEach((co, i) => co.li.classList.toggle('cur', i === curIdx));
 
   // outcomes
   if (sec.name === 'outcomes') {
@@ -1129,7 +1328,7 @@ function resize() {
   renderer.setSize(W, H);
   composer.setSize(W, H);
   bloom.setSize(W / 2, H / 2);
-  camera.aspect = W / H; camera.updateProjectionMatrix();
+  camera.aspect = W / H; camera.userData.sx = null; camera.updateProjectionMatrix();
   lineMats.forEach(m => m.resolution.set(W, H));
   globeMats[0].uniforms.uSize.value = 10 * DPR * (H / 900);
   measure();
