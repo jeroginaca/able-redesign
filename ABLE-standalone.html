@@ -1,0 +1,1806 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ABLE Exoskeleton</title>
+<meta name="description" content="ABLE is a 9.8 kg knee-powered exoskeleton, CE-marked under EU MDR, that gets people with spinal cord injury standing and walking in clinic.">
+<meta name="theme-color" content="#07080a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* ABLE — concept redesign */
+:root {
+  --bg: #07080a;
+  --bg-2: #0d0f12;
+  --ink: #eeebe5;
+  --ink-2: #bdb9b2;
+  --mute: #7d8189;
+  --line: rgba(238, 235, 229, 0.12);
+  --line-2: rgba(238, 235, 229, 0.22);
+  --glass: rgba(14, 16, 19, 0.62);
+  --accent: #ff5b1f;
+  --accent-soft: #ffb08c;
+  --hip: #8fb7ff;
+  --serif: "Instrument Serif", "Times New Roman", serif;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --gutter: clamp(16px, 4vw, 56px);
+  --ease: cubic-bezier(.2, .7, .1, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--bg); color-scheme: dark; }
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--sans); font-weight: 400; font-size: 16px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+a { color: inherit; }
+h1, h2, h3, p { margin: 0; }
+.mono { font-family: var(--mono); letter-spacing: 0.02em; }
+.tiny { font-size: 11px; line-height: 1.5; }
+.mute { color: var(--mute); }
+
+/* ---------- WebGL + overlays ---------- */
+#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 0; }
+#dim { position: fixed; inset: 0; background: var(--bg); opacity: 0; pointer-events: none; z-index: 1; }
+.grain {
+  position: fixed; inset: -50%; z-index: 60; pointer-events: none; opacity: .07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation: grain 1s steps(6) infinite;
+}
+@keyframes grain { 0%{transform:translate(0,0)} 20%{transform:translate(-3%,2%)} 40%{transform:translate(2%,-4%)} 60%{transform:translate(-4%,-1%)} 80%{transform:translate(3%,3%)} 100%{transform:translate(0,0)} }
+main { position: relative; z-index: 2; }
+#leaders, #labels { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 3; }
+
+/* ---------- Loader ---------- */
+#loader {
+  position: fixed; inset: 0; z-index: 100; background: var(--bg);
+  display: grid; place-items: center; transition: opacity 1s var(--ease), visibility 1s;
+}
+#loader.done { opacity: 0; visibility: hidden; }
+.loader-inner { width: min(360px, 80vw); }
+.loader-word { font-family: var(--serif); font-size: 64px; letter-spacing: .04em; line-height: 1; margin-bottom: 24px; }
+.loader-track { height: 1px; background: var(--line); position: relative; overflow: hidden; }
+#loader-bar { position: absolute; inset: 0; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform .4s var(--ease); }
+.loader-meta { display: flex; justify-content: space-between; margin-top: 12px; font-size: 11px; color: var(--mute); text-transform: uppercase; }
+
+/* ---------- Nav ---------- */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  padding: 18px var(--gutter);
+  background: linear-gradient(to bottom, rgba(7,8,10,.7), rgba(7,8,10,0));
+}
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo-mark { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--ink); position: relative; }
+.logo-mark::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+.logo-word { font-weight: 600; letter-spacing: .28em; font-size: 15px; }
+.nav-links { display: flex; gap: 28px; font-size: 14px; }
+.nav-links a { text-decoration: none; color: var(--ink-2); transition: color .3s; position: relative; }
+.nav-links a:hover, .nav-links a.active { color: var(--ink); }
+.nav-links a.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 1px; background: var(--accent); }
+.nav-right { display: flex; align-items: center; gap: 20px; }
+.lang { font-size: 12px; color: var(--mute); }
+.lang b { color: var(--ink); font-weight: 500; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 10px; text-decoration: none;
+  background: var(--accent); color: #140700; font-weight: 500; font-size: 15px;
+  padding: 14px 22px; border-radius: 999px; border: 1px solid var(--accent);
+  transition: transform .4s var(--ease), box-shadow .4s var(--ease), background .3s;
+  box-shadow: 0 0 0 rgba(255,91,31,0);
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 10px 40px -8px rgba(255,91,31,.6); }
+.btn-ghost { background: transparent; color: var(--ink); border-color: var(--line-2); }
+.btn-ghost:hover { border-color: var(--ink); box-shadow: none; }
+.btn-small { padding: 9px 16px; font-size: 13px; }
+
+/* ---------- HUD + chapter ---------- */
+.hud {
+  position: fixed; left: var(--gutter); bottom: 22px; z-index: 40; font-size: 11px;
+  color: var(--ink-2); text-transform: uppercase; transition: opacity .6s;
+}
+.hud-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--ink); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 1.6s infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+.hud-grid { display: grid; grid-template-columns: auto auto; gap: 2px 16px; }
+.hud-grid span { color: var(--mute); }
+.hud-grid b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; min-width: 8ch; }
+.chapter {
+  position: fixed; right: var(--gutter); bottom: 22px; z-index: 40; font-size: 11px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 10px; color: var(--ink-2); transition: opacity .6s;
+}
+.chapter i { width: 40px; height: 1px; background: var(--line-2); }
+body.hud-off .hud, body.hud-off .chapter { opacity: 0; }
+
+/* ---------- Common type ---------- */
+.stage { position: relative; }
+.sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+.label { font-size: 11px; text-transform: uppercase; color: var(--accent-soft); margin-bottom: 20px; letter-spacing: .12em; }
+.display {
+  font-family: var(--serif); font-weight: 400; line-height: .9; letter-spacing: -0.02em;
+  font-size: clamp(64px, 11vw, 190px);
+}
+.display em, .h2 em { font-style: italic; color: var(--ink-2); }
+.h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 5.2vw, 84px); line-height: .98; letter-spacing: -0.015em; }
+.lede { font-size: clamp(17px, 1.35vw, 20px); color: var(--ink-2); max-width: 36ch; line-height: 1.5; }
+.body { font-size: 16px; color: var(--ink-2); max-width: 40ch; margin-top: 20px; }
+.body-s { font-size: 14.5px; color: var(--ink-2); line-height: 1.55; }
+.glass { background: var(--glass); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); border: 1px solid var(--line); border-radius: 18px; }
+
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 1.1s var(--ease), transform 1.1s var(--ease); }
+.reveal.in { opacity: 1; transform: none; }
+.hero-copy .reveal:nth-child(2) { transition-delay: .1s; }
+.hero-copy .reveal:nth-child(3) { transition-delay: .2s; }
+.hero-copy .reveal:nth-child(4) { transition-delay: .3s; }
+
+/* ---------- 01 Hero ---------- */
+#hero { height: 100vh; min-height: 640px; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 var(--gutter) 170px; }
+.hero-copy { display: flex; flex-direction: column; gap: 28px; max-width: 900px; }
+.eyebrow { font-size: 12px; text-transform: uppercase; color: var(--ink-2); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.pill { border: 1px solid rgba(255,91,31,.5); color: var(--accent-soft); padding: 5px 10px; border-radius: 999px; }
+.cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.hero-foot { position: absolute; inset: 0; font-size: 11px; color: var(--mute); text-transform: uppercase; pointer-events: none; }
+.hero-foot > span:first-child { position: absolute; right: var(--gutter); top: 96px; max-width: 30ch; text-align: right; line-height: 1.6; }
+.scroll-cue { position: absolute; right: var(--gutter); bottom: 100px; display: flex; align-items: center; gap: 10px; }
+.scroll-cue i { width: 44px; height: 1px; background: var(--line-2); position: relative; overflow: hidden; }
+.scroll-cue i::after { content: ""; position: absolute; inset: 0; background: var(--accent); animation: stride 1.8s var(--ease) infinite; }
+@keyframes stride { 0% { transform: translateX(-100%); } 60%,100% { transform: translateX(100%); } }
+
+/* ---------- 02 Manifesto ---------- */
+#manifesto { height: 260vh; }
+.manifesto-copy { position: absolute; left: var(--gutter); right: var(--gutter); top: 50%; transform: translateY(-50%); max-width: 1100px; }
+.manifesto { font-family: var(--serif); font-size: clamp(34px, 4.4vw, 72px); line-height: 1.06; letter-spacing: -0.01em; }
+.manifesto .w { opacity: .14; transition: opacity .5s, color .5s; }
+.manifesto .w.on { opacity: 1; }
+.manifesto .w.hl { color: var(--accent-soft); font-style: italic; }
+
+/* ---------- 03 Gait ---------- */
+#gait { height: 420vh; }
+.gait-intro { position: absolute; left: var(--gutter); top: 16vh; max-width: 480px; }
+.gait-panel { position: absolute; right: var(--gutter); top: 50%; transform: translateY(-50%); width: min(400px, 36vw); padding: 22px; }
+.gp-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
+.gp-phase { font-family: var(--serif); font-size: 34px; line-height: 1.05; margin-top: 4px; }
+.gp-pct { font-size: 28px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.gp-desc { font-size: 14px; color: var(--ink-2); min-height: 4.6em; margin-bottom: 12px; }
+.gp-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.gp-grid line { stroke: var(--line); stroke-width: 1; }
+.gp-stance { fill: rgba(255,255,255,.035); }
+.gp-knee { fill: none; stroke: var(--accent); stroke-width: 2; }
+.gp-hip { fill: none; stroke: var(--hip); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.gp-cursor { stroke: var(--ink); stroke-width: 1; opacity: .6; }
+.gp-kdot { fill: var(--accent); filter: drop-shadow(0 0 6px var(--accent)); }
+.gp-hdot { fill: var(--hip); }
+.gp-axis { font: 9px var(--mono); fill: var(--mute); }
+.gp-legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--ink-2); margin: 8px 0 14px; }
+.gp-legend b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+.sw { display: inline-block; width: 12px; height: 2px; vertical-align: middle; margin-right: 6px; }
+.sw-knee { background: var(--accent); } .sw-hip { background: var(--hip); } .sw-stance { background: rgba(255,255,255,.25); height: 8px; }
+.scrub { width: 100%; appearance: none; -webkit-appearance: none; background: transparent; height: 22px; cursor: grab; }
+.scrub::-webkit-slider-runnable-track { height: 2px; background: var(--line-2); }
+.scrub::-moz-range-track { height: 2px; background: var(--line-2); }
+.scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--ink); margin-top: -7px; box-shadow: 0 0 0 5px rgba(255,91,31,.3); }
+.scrub::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--ink); border: 0; }
+.gp-phases { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.gp-phases li { border-top: 1px solid var(--line); padding-top: 6px; color: var(--mute); cursor: pointer; transition: color .3s, border-color .3s; }
+.gp-phases li.on { color: var(--ink); border-color: var(--accent); }
+.gait-note { position: absolute; left: var(--gutter); bottom: 110px; max-width: 42ch; }
+
+/* ---------- 04 Device ---------- */
+#device { height: 420vh; }
+.device-copy { position: absolute; left: var(--gutter); top: 16vh; max-width: 460px; }
+.spec-strip { position: absolute; left: var(--gutter); bottom: 110px; display: flex; gap: 0; list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+.spec-strip li { padding: 16px 28px 0 0; margin-right: 28px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.spec-strip li:last-child { border-right: 0; }
+.spec-strip b { font-family: var(--serif); font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: 0; }
+.spec-strip small { font-family: var(--mono); font-size: 12px; margin-left: 3px; color: var(--mute); }
+.spec-strip span { font-size: 10.5px; text-transform: uppercase; color: var(--mute); }
+.callout-list { position: absolute; right: var(--gutter); top: 50%; transform: translateY(-50%); width: min(330px, 30vw); list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 22px; }
+.callout-list li { display: grid; grid-template-columns: 28px 1fr; gap: 8px; opacity: .12; transform: translateX(20px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
+.callout-list li.on { opacity: 1; transform: none; }
+.callout-list li > span { font-size: 11px; color: var(--accent); padding-top: 6px; }
+.callout-list h3 { font-family: var(--serif); font-weight: 400; font-size: 26px; line-height: 1.1; }
+.callout-list p { font-size: 13.5px; color: var(--ink-2); margin-top: 4px; }
+#leaders line { stroke: rgba(255,176,140,.6); stroke-width: 1; }
+#leaders circle { fill: var(--accent); }
+#leaders circle.halo { fill: none; stroke: var(--accent); stroke-width: 1; opacity: .5; }
+
+.lbl3d { position: absolute; left: 0; top: 0; font: 500 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; color: var(--ink); padding: 4px 8px; border-radius: 6px; background: rgba(7,8,10,.55); border: 1px solid var(--line); transition: opacity .4s; will-change: transform; }
+.lbl3d b { color: var(--accent); font-weight: 500; }
+.lbl3d.site { text-transform: none; letter-spacing: .01em; font-size: 12px; padding: 7px 10px; }
+.lbl3d.site small { display: block; color: var(--mute); font-size: 10.5px; }
+
+/* ---------- 05 Outcomes ---------- */
+#outcomes { height: 420vh; }
+.out-head { position: absolute; left: var(--gutter); top: 16vh; max-width: 520px; }
+.out-session { position: absolute; right: var(--gutter); top: 16vh; text-align: right; }
+.out-num { font-family: var(--serif); font-size: clamp(90px, 12vw, 200px); line-height: .9; font-variant-numeric: tabular-nums; }
+.out-num small { font-size: .3em; color: var(--mute); margin-left: 6px; }
+.out-ticks { display: flex; gap: 5px; justify-content: flex-end; margin: 14px 0 10px; }
+.out-ticks i { width: 16px; height: 3px; background: var(--line-2); transition: background .3s, box-shadow .3s; }
+.out-ticks i.on { background: var(--accent); box-shadow: 0 0 8px rgba(255,91,31,.7); }
+.out-metrics { position: absolute; left: var(--gutter); right: var(--gutter); bottom: 150px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.metric { border-top: 1px solid var(--line-2); padding-top: 14px; }
+.metric b { display: block; font-family: var(--serif); font-weight: 400; font-size: clamp(44px, 5vw, 80px); line-height: 1; font-variant-numeric: tabular-nums; }
+.metric b::after { content: "×"; font-size: .45em; color: var(--accent); margin-left: 4px; vertical-align: .6em; }
+.metric span { font-size: 13px; color: var(--ink-2); }
+.out-cite { position: absolute; left: var(--gutter); bottom: 100px; max-width: 90ch; }
+
+/* ---------- 06 Clinic ---------- */
+.flow { padding: 22vh 0 18vh; }
+.wrap { padding: 0 var(--gutter); max-width: 1440px; margin: 0 auto; }
+.clinic-head { margin-bottom: 72px; }
+.qa { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.q { background: rgba(16,18,22,.7); border: 1px solid var(--line); border-radius: 20px; padding: 30px; display: flex; flex-direction: column; gap: 14px; transition: border-color .4s; }
+.q:hover { border-color: var(--line-2); }
+.q-wide { grid-column: span 2; }
+.q-calc { grid-column: span 3; }
+.q-n { font-size: 11px; color: var(--accent); }
+.q h3 { font-family: var(--serif); font-weight: 400; font-size: 32px; line-height: 1.05; }
+.q-a { font-size: 17px; color: var(--ink); }
+.q-a em { font-style: normal; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; margin: 6px 0 0; font-size: 12px; }
+.kv dt { color: var(--mute); text-transform: uppercase; font-size: 10.5px; padding-top: 1px; }
+.kv dd { margin: 0; color: var(--ink); }
+.refs { list-style: none; padding: 0; margin: 4px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.refs a { display: flex; flex-direction: column; gap: 6px; height: 100%; text-decoration: none; border: 1px solid var(--line); border-radius: 14px; padding: 16px; transition: border-color .3s, background .3s; }
+.refs a:hover { border-color: var(--accent); background: rgba(255,91,31,.05); }
+.refs span { font-size: 10.5px; color: var(--accent-soft); text-transform: uppercase; }
+.refs b { font-weight: 500; font-size: 15px; line-height: 1.3; }
+.refs small { color: var(--mute); font-size: 12.5px; }
+.trials a { color: var(--ink-2); }
+.link { font-size: 12px; text-transform: uppercase; color: var(--accent-soft); text-decoration: none; margin-top: auto; }
+.link:hover { color: var(--accent); }
+
+.calc { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; margin-top: 8px; }
+.calc-in { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 32px; align-content: start; }
+.calc-in label { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-content: start; font-size: 13px; color: var(--ink-2); }
+.calc-in output { font-family: var(--mono); color: var(--ink); font-size: 13px; }
+.calc-in input { grid-column: span 2; width: 100%; accent-color: var(--accent); }
+.calc-out { border-left: 1px solid var(--line); padding-left: 40px; display: flex; flex-direction: column; gap: 14px; }
+.calc-out .big b { font-family: var(--serif); font-weight: 400; font-size: 96px; line-height: .9; color: var(--ink); display: block; font-variant-numeric: tabular-nums; }
+.calc-out span { color: var(--ink-2); font-size: 13px; }
+.calc-out .row { display: flex; align-items: baseline; gap: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.calc-out .row b { font-family: var(--mono); font-weight: 500; font-size: 20px; min-width: 5ch; }
+.bar { display: flex; gap: 3px; height: 26px; margin-top: 4px; }
+.bar i { flex: 1; border-radius: 3px; background: var(--line); position: relative; overflow: hidden; }
+.bar i b { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); opacity: .85; }
+.bar i s { position: absolute; top: 0; bottom: 0; background: rgba(255,255,255,.25); }
+
+/* content-gap review mode */
+.review-btn { font: inherit; color: var(--accent-soft); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+body.review .tbc { outline: 1px dashed #ffd84a; outline-offset: 4px; position: relative; }
+body.review .tbc::before { content: attr(data-note); position: absolute; top: -26px; left: 0; z-index: 5; white-space: nowrap; font: 500 10px var(--mono); text-transform: uppercase; background: #ffd84a; color: #111; padding: 3px 6px; border-radius: 3px; }
+
+/* ---------- 07 Network ---------- */
+#network { height: 300vh; }
+.net-copy { position: absolute; left: var(--gutter); top: 50%; transform: translateY(-50%); max-width: 420px; }
+.sites { list-style: none; padding: 0; margin: 32px 0 28px; border-top: 1px solid var(--line); }
+.sites li { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; opacity: .25; transition: opacity .6s; }
+.sites li.on { opacity: 1; }
+.sites li i { color: var(--accent); font-style: normal; }
+.sites li small { color: var(--mute); display: block; font-size: 11px; margin-top: 2px; }
+.sites li em { font-style: normal; color: var(--mute); font-size: 11px; }
+
+/* ---------- 08 Impact ---------- */
+#impact { min-height: 100vh; padding-top: 24vh; }
+.impact-nums { display: grid; grid-template-columns: 1fr 1.6fr; gap: 40px; border-top: 1px solid var(--line); padding-top: 28px; }
+.impact-nums b { font-family: var(--serif); font-weight: 400; font-size: clamp(72px, 11vw, 190px); line-height: .9; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.impact-nums sup { font-family: var(--serif); color: var(--accent); font-size: clamp(36px, 4vw, 70px); vertical-align: top; }
+.impact-nums span { display: block; font-size: 12px; text-transform: uppercase; color: var(--ink-2); margin-top: 12px; }
+.impact-line { font-family: var(--serif); font-style: italic; font-size: clamp(28px, 3.2vw, 48px); color: var(--ink-2); margin: 10vh 0 14vh; max-width: 24ch; }
+.cta-card { display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; padding: clamp(28px, 4vw, 56px); align-items: end; scroll-margin-top: 100px; }
+.cta-actions { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.foot { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding: 60px var(--gutter) 90px; color: var(--mute); border-top: 1px solid var(--line); margin-top: 16vh; position: relative; z-index: 2; background: var(--bg); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .nav-links { display: none; }
+  .qa { grid-template-columns: 1fr 1fr; }
+  .q-wide, .q-calc { grid-column: span 2; }
+  .refs { grid-template-columns: 1fr; }
+  .spec-strip li { padding-right: 16px; margin-right: 16px; }
+  .spec-strip b { font-size: 30px; }
+}
+@media (max-width: 760px) {
+  .lang { display: none; }
+  #hero { padding-bottom: 150px; }
+  .hero-foot > span:first-child { display: none; }
+  .scroll-cue { display: none; }
+  .gait-intro, .device-copy, .out-head { top: 88px; right: var(--gutter); }
+  .gait-intro .body, .device-copy .body { display: none; }
+  .gait-panel { left: 16px; right: 16px; width: auto; top: auto; bottom: 16px; transform: none; padding: 16px; }
+  .gp-phase { font-size: 24px; } .gp-pct { font-size: 20px; }
+  .gp-desc { min-height: 0; font-size: 13px; }
+  .gp-chart { max-height: 90px; }
+  .gp-phases { display: none; }
+  .gait-note { display: none; }
+  .callout-list { left: 16px; right: 16px; width: auto; top: auto; bottom: 16px; transform: none; gap: 10px; }
+  .callout-list li { display: none; }
+  .callout-list li.cur { display: grid; }
+  .callout-list li.cur { background: var(--glass); border: 1px solid var(--line); border-radius: 14px; padding: 14px; backdrop-filter: blur(14px); }
+  .spec-strip { display: none; }
+  .out-session { top: 200px; right: var(--gutter); }
+  .out-num { font-size: 64px; }
+  .out-session > p.mono { display: none; }
+  #hero::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 70%; background: linear-gradient(to top, rgba(7,8,10,.92) 40%, rgba(7,8,10,0)); pointer-events: none; }
+  .hero-copy { position: relative; }
+  .gp-desc { display: none; }
+  .sites li { padding: 8px 0; }
+  .out-metrics { grid-template-columns: 1fr 1fr; bottom: 90px; gap: 14px; }
+  .out-cite { display: none; }
+  .qa { grid-template-columns: 1fr; }
+  .q-wide, .q-calc { grid-column: auto; }
+  .calc { grid-template-columns: 1fr; }
+  .calc-in { grid-template-columns: 1fr; }
+  .calc-out { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 20px; }
+  .net-copy { top: 88px; transform: none; right: var(--gutter); }
+  .sites { margin: 16px 0; }
+  .impact-nums { grid-template-columns: 1fr; }
+  .cta-card { grid-template-columns: 1fr; }
+  .hud { display: none; }
+  .chapter { display: none; }
+  #leaders { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .grain { animation: none; }
+  .reveal { transition: none; opacity: 1; transform: none; }
+}
+
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+  "lenis": "https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.mjs"
+} }
+</script>
+</head>
+<body>
+
+<canvas id="gl" aria-hidden="true"></canvas>
+<div id="dim" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- Loader -->
+<div id="loader" aria-hidden="true">
+  <div class="loader-inner">
+    <div class="loader-word">ABLE</div>
+    <div class="loader-track"><span id="loader-bar"></span></div>
+    <div class="loader-meta mono"><span>Calibrating gait model</span><span id="loader-pct">0%</span></div>
+  </div>
+</div>
+
+<!-- Navigation -->
+<header class="nav">
+  <a href="#top" class="logo" aria-label="ABLE Human Motion, home">
+    <span class="logo-mark"></span><span class="logo-word">ABLE</span>
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="#gait">The step</a>
+    <a href="#device">Device</a>
+    <a href="#outcomes">Outcomes</a>
+    <a href="#clinic">For clinics</a>
+    <a href="#network">Network</a>
+  </nav>
+  <div class="nav-right">
+    <span class="lang mono"><b>EN</b> / ES</span>
+    <a class="btn btn-small" href="#contact">Book a demo</a>
+  </div>
+</header>
+
+<!-- Live HUD -->
+<aside class="hud mono" aria-hidden="true">
+  <div class="hud-row"><i class="dot"></i><span id="hud-mode">Live gait model</span></div>
+  <div class="hud-grid">
+    <span>Cycle</span><b id="hud-cycle">0%</b>
+    <span>Knee</span><b id="hud-knee">0°</b>
+    <span>Hip</span><b id="hud-hip">0°</b>
+    <span>Speed</span><b id="hud-speed">0.00 m/s</b>
+  </div>
+</aside>
+<div class="chapter mono" aria-hidden="true"><span id="chapter-n">01</span><i></i><span id="chapter-t">Movement</span></div>
+
+<!-- 3D callout layer -->
+<svg id="leaders" aria-hidden="true"></svg>
+<div id="labels" aria-hidden="true"></div>
+
+<main id="top">
+
+  <!-- 01 HERO -->
+  <section id="hero" class="stage" data-stage="hero" data-title="Movement">
+    <div class="hero-copy">
+      <p class="eyebrow mono reveal"><span class="pill">CE 2797 · EU MDR</span> Exoskeleton for spinal cord injury</p>
+      <h1 class="display reveal">Movement<br><em>is the product.</em></h1>
+      <p class="lede reveal">ABLE is a 9.8&nbsp;kg knee-powered exoskeleton that gets people with spinal cord injury standing and walking in your rehab gym. It takes under seven minutes to fit.</p>
+      <div class="cta-row reveal">
+        <a class="btn" href="#contact">Book a clinical demo</a>
+        <a class="btn btn-ghost" href="#gait">Watch one step <span aria-hidden="true">↓</span></a>
+      </div>
+    </div>
+    <div class="hero-foot mono reveal">
+      <span>Fig. 1 Chronophotograph of a walking ABLE user, rendered live, after Marey (1882)</span>
+      <span class="scroll-cue"><i></i>Scroll</span>
+    </div>
+  </section>
+
+  <!-- 02 MANIFESTO -->
+  <section id="manifesto" class="stage" data-stage="manifesto" data-title="Why it matters">
+    <div class="sticky">
+      <div class="manifesto-copy">
+        <p class="mono label">02 Why it matters</p>
+        <p class="manifesto" data-words>After a spinal cord injury, standing up is not a metaphor. It means being at eye level again, a hug that doesn't come from below, and a first step in months. A few weeks later it means the thousandth.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 GAIT LAB -->
+  <section id="gait" class="stage" data-stage="gait" data-title="The step">
+    <div class="sticky">
+      <div class="gait-intro">
+        <p class="mono label">03 Anatomy of a step</p>
+        <h2 class="h2">One gait cycle.<br><em>Scroll to walk it.</em></h2>
+        <p class="body">A step takes about two seconds. Scroll through the eight phases of one gait cycle and watch the powered knee work through each of them.</p>
+      </div>
+      <div class="gait-panel glass">
+        <div class="gp-head">
+          <div>
+            <p class="mono tiny mute">Phase</p>
+            <p class="gp-phase" id="gp-phase">Initial contact</p>
+          </div>
+          <p class="gp-pct mono" id="gp-pct">0%</p>
+        </div>
+        <p class="gp-desc" id="gp-desc"></p>
+        <svg class="gp-chart" id="gp-chart" viewBox="0 0 320 150" role="img" aria-label="Knee and hip angle across the gait cycle">
+          <g class="gp-grid"></g>
+          <path id="gp-stance" class="gp-stance"/>
+          <path id="gp-hip" class="gp-hip"/>
+          <path id="gp-knee" class="gp-knee"/>
+          <line id="gp-cursor" class="gp-cursor" x1="0" x2="0" y1="8" y2="128"/>
+          <circle id="gp-kdot" r="3.5" class="gp-kdot"/>
+          <circle id="gp-hdot" r="3" class="gp-hdot"/>
+          <text x="4" y="146" class="gp-axis">0%</text>
+          <text x="316" y="146" text-anchor="end" class="gp-axis">100% gait cycle</text>
+          <text x="4" y="18" class="gp-axis">60°</text>
+        </svg>
+        <div class="gp-legend mono tiny">
+          <span><i class="sw sw-knee"></i>Knee flexion <b id="gp-knee-v">0°</b></span>
+          <span><i class="sw sw-hip"></i>Hip flexion <b id="gp-hip-v">0°</b></span>
+          <span><i class="sw sw-stance"></i>Stance</span>
+        </div>
+        <input id="gp-scrub" class="scrub" type="range" min="0" max="1000" value="0" aria-label="Scrub through the gait cycle">
+        <ol class="gp-phases mono tiny" id="gp-phases"></ol>
+      </div>
+      <p class="gait-note mono tiny mute">Kinematics show a typical sagittal-plane gait pattern for illustration. They are not recorded device data.</p>
+    </div>
+  </section>
+
+  <!-- 04 DEVICE -->
+  <section id="device" class="stage" data-stage="device" data-title="The device">
+    <div class="sticky">
+      <div class="device-copy">
+        <p class="mono label">04 The device</p>
+        <h2 class="h2">Built for the gym floor,<br><em>not the showroom.</em></h2>
+        <p class="body">Everything a therapist needs to get a patient standing, and nothing to wrestle with between sessions.</p>
+      </div>
+      <ul class="spec-strip mono">
+        <li><b>9.8<small>kg</small></b><span>Device weight</span></li>
+        <li><b>150–190<small>cm</small></b><span>User height</span></li>
+        <li><b>≤100<small>kg</small></b><span>User weight</span></li>
+        <li><b>C5–L5</b><span>Injury levels</span></li>
+        <li><b>&lt;7<small>min</small></b><span>To fit</span></li>
+      </ul>
+      <ol class="callout-list" id="callouts">
+        <li data-anchor="knee"><span class="mono">01</span><div><h3>Powered knee</h3><p>A motorised joint drives knee flexion and extension through the step.</p></div></li>
+        <li data-anchor="hip"><span class="mono">02</span><div><h3>Passive hip</h3><p>The hip joint is unpowered, so the pelvis moves naturally and the device stays light.</p></div></li>
+        <li data-anchor="upright"><span class="mono">03</span><div><h3>Adjustable uprights</h3><p>Thigh and shank segments adjust to fit users from 150 to 190&nbsp;cm.</p></div></li>
+        <li data-anchor="cuff"><span class="mono">04</span><div><h3>Quick-fit cuffs</h3><p>Fitting and removal averaged 6:50 minutes across the multicentre trial.</p></div></li>
+        <li data-anchor="crutch"><span class="mono">05</span><div><h3>Crutch-assisted balance</h3><p>Users walk with forearm crutches. Elbow extensors need at least 4/5 strength in both arms.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 05 OUTCOMES -->
+  <section id="outcomes" class="stage" data-stage="outcomes" data-title="Outcomes">
+    <div class="sticky">
+      <div class="out-head">
+        <p class="mono label">05 A stride over time</p>
+        <h2 class="h2">Twelve sessions.<br><em>Watch the stride open up.</em></h2>
+      </div>
+      <div class="out-session">
+        <p class="mono tiny mute">Training session</p>
+        <p class="out-num"><span id="sess-n">01</span><small>/12</small></p>
+        <div class="out-ticks" id="sess-ticks"></div>
+        <p class="mono tiny mute">4 weeks · 3 sessions a week · n = 24</p>
+      </div>
+      <div class="out-metrics">
+        <div class="metric"><b data-to="2.6">1.0</b><span>× walking time per session</span></div>
+        <div class="metric"><b data-to="3.0">1.0</b><span>× steps per session</span></div>
+        <div class="metric"><b data-to="2.1">1.0</b><span>× faster 10&nbsp;m walk test</span></div>
+        <div class="metric"><b data-to="1.9">1.0</b><span>× further 6-minute walk test</span></div>
+      </div>
+      <p class="out-cite mono tiny mute">Session 2 vs. session 11, cohort means. Wright M.A. et al., <i>J NeuroEng Rehabil</i> 20:45 (2023). Multicentre study at Institut Guttmann and Heidelberg University Hospital. Intermediate values are interpolated for illustration.</p>
+    </div>
+  </section>
+
+  <!-- 06 FOR CLINICS -->
+  <section id="clinic" class="stage flow" data-stage="clinic" data-title="For clinics">
+    <div class="wrap">
+      <header class="clinic-head">
+        <p class="mono label">06 For clinic directors &amp; procurement</p>
+        <h2 class="h2 reveal">The six questions<br><em>your committee will ask.</em></h2>
+        <p class="body reveal">A capital purchase deserves straight answers. Here they are, sourced, before anyone asks for a meeting.</p>
+      </header>
+
+      <div class="qa">
+        <article class="q reveal" id="q-ce">
+          <p class="q-n mono">Q1</p>
+          <h3>Is it CE marked?</h3>
+          <p class="q-a"><em>Yes, under the EU Medical Device Regulation.</em></p>
+          <dl class="kv mono">
+            <dt>Certificate</dt><dd>CE 2797 · MDR 2017/745</dd>
+            <dt>Since</dt><dd>April 2024</dd>
+            <dt>Indication</dt><dd>Spinal cord injury, C5–L5</dd>
+            <dt>Setting</dt><dd>Rehab institutions, supervised by a trained therapist</dd>
+            <dt>Requirement</dt><dd>Elbow extensors ≥ 4/5, both arms</dd>
+          </dl>
+        </article>
+
+        <article class="q q-wide reveal" id="q-evidence">
+          <p class="q-n mono">Q2</p>
+          <h3>What is the clinical evidence?</h3>
+          <p class="q-a"><em>Peer-reviewed, multicentre, registered trials.</em></p>
+          <ul class="refs">
+            <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10091314/" target="_blank" rel="noopener"><span class="mono">2023 · J NeuroEng Rehabil</span><b>Multicentre safety, feasibility &amp; usability</b><small>n = 24 · Institut Guttmann (ES), Heidelberg Univ. Hospital (DE) · 12 sessions</small></a></li>
+            <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11464447/" target="_blank" rel="noopener"><span class="mono">2024 · J NeuroEng Rehabil</span><b>Home &amp; community skills with a personal-use exoskeleton</b><small>n = 10 · SCI C5–T11</small></a></li>
+            <li><a href="https://www.tandfonline.com/doi/abs/10.1080/09638288.2025.2496351" target="_blank" rel="noopener"><span class="mono">2025 · Disability &amp; Rehabilitation</span><b>Co-creation with clinicians and patients</b><small>Pilot study and comparative analysis</small></a></li>
+          </ul>
+          <p class="mono tiny mute trials">Registered: <a href="https://clinicaltrials.gov/study/NCT04876794" target="_blank" rel="noopener">NCT04876794</a> · <a href="https://clinicaltrials.gov/study/NCT05590065" target="_blank" rel="noopener">NCT05590065</a> · <a href="https://clinicaltrials.gov/study/NCT05643313" target="_blank" rel="noopener">NCT05643313</a> · <a href="https://clinicaltrials.gov/study/NCT07062575" target="_blank" rel="noopener">NCT07062575</a></p>
+        </article>
+
+        <article class="q q-calc reveal" id="q-throughput">
+          <p class="q-n mono">Q3</p>
+          <h3>How many patients a day can I run through it?</h3>
+          <p class="q-a"><em>Set your own schedule and see.</em></p>
+          <div class="calc">
+            <div class="calc-in">
+              <label><span>Gym hours per day</span><output id="o-hours">8 h</output><input type="range" id="c-hours" min="4" max="12" step="0.5" value="8"></label>
+              <label><span>Walking session length</span><output id="o-sess">45 min</output><input type="range" id="c-sess" min="20" max="90" step="5" value="45"></label>
+              <label><span>Fit &amp; remove</span><output id="o-fit">7 min</output><input type="range" id="c-fit" min="4" max="15" step="1" value="7"></label>
+              <label><span>Turnover buffer</span><output id="o-buf">5 min</output><input type="range" id="c-buf" min="0" max="20" step="1" value="5"></label>
+            </div>
+            <div class="calc-out">
+              <div class="big"><b id="r-day">8</b><span>patient sessions / day</span></div>
+              <div class="row"><b id="r-year">1,840</b><span>sessions / year (46 wks × 5 days)</span></div>
+              <div class="row"><b id="r-prog">13</b><span>patients on a 12-session programme, every month</span></div>
+              <div class="bar" id="r-bar" aria-hidden="true"></div>
+            </div>
+          </div>
+          <p class="mono tiny mute">Estimate only. The fit time default (7 min) comes from the multicentre trial mean of 6:50 ± 2:50.</p>
+        </article>
+
+        <article class="q reveal" id="q-reimb">
+          <p class="q-n mono">Q4</p>
+          <h3>What's the reimbursement situation?</h3>
+          <p class="q-a"><em>It depends on your country, and we'll map it for you.</em></p>
+          <p class="body-s tbc" data-note="Needs ABLE input: per-market codes and payer precedents">Reimbursement for robotic gait training varies by country, payer and care setting. Before you buy, our market access team prepares a dossier for your committee covering the applicable codes, payer precedents and a budget-impact case.</p>
+          <a class="link mono" href="#contact">Request your market dossier →</a>
+        </article>
+
+        <article class="q reveal" id="q-staff">
+          <p class="q-n mono">Q5</p>
+          <h3>How long does my staff take to learn it?</h3>
+          <p class="q-a"><em>Therapists rate it highly. The best-rated attributes are weight, durability and size.</em></p>
+          <dl class="kv mono">
+            <dt>Therapist satisfaction</dt><dd>31.6 / 40 · QUEST 2.0 · 11 therapists</dd>
+            <dt>Patient satisfaction</dt><dd>31.7 / 40 · QUEST 2.0</dd>
+            <dt>Fitting time</dt><dd>6:50 ± 2:50 min (trial mean)</dd>
+            <dt class="tbc" data-note="Needs ABLE input: onboarding length and format">Onboarding</dt><dd class="tbc" data-note="Needs ABLE input">On-site certification programme, run by ABLE clinical specialists</dd>
+          </dl>
+        </article>
+
+        <article class="q reveal" id="q-who">
+          <p class="q-n mono">Q6</p>
+          <h3>Who in my country already uses it?</h3>
+          <p class="q-a"><em>Neurorehab hospitals in Spain, Germany, the Netherlands and the UK.</em></p>
+          <p class="body-s">Clinical validation has run in all four countries, at hospitals including Institut Guttmann and Heidelberg University Hospital. We'll put you in touch with a reference clinic near you.</p>
+          <a class="link mono" href="#network">See the network ↓</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 NETWORK -->
+  <section id="network" class="stage" data-stage="network" data-title="Network">
+    <div class="sticky">
+      <div class="net-copy">
+        <p class="mono label">07 Network</p>
+        <h2 class="h2">Already walking<br><em>across Europe.</em></h2>
+        <ul class="sites mono" id="sites"></ul>
+        <a class="btn btn-ghost" href="#contact">Talk to a reference clinic</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 IMPACT + CTA -->
+  <section id="impact" class="stage" data-stage="impact" data-title="Next step">
+    <div class="wrap impact">
+      <div class="impact-nums">
+        <div><b class="count" data-to="200">0</b><sup>+</sup><span class="mono">people with neurological impairments</span></div>
+        <div><b class="count" data-to="1000000">0</b><sup>+</sup><span class="mono">steps taken in ABLE</span></div>
+      </div>
+      <p class="impact-line reveal">Each of those steps was the first in a long time for someone.</p>
+      <div class="cta-card glass reveal" id="contact">
+        <div>
+          <p class="mono label">Next step</p>
+          <h2 class="h2">See ABLE walk<br><em>in your gym.</em></h2>
+          <p class="body">We'll bring the device, fit a patient or a volunteer and run a full session with your team. You'll have the evidence pack, a throughput model and the reimbursement dossier.</p>
+        </div>
+        <div class="cta-actions">
+          <a class="btn" href="mailto:hello@ablehumanmotion.com?subject=Clinical%20demo%20request">Book a clinical demo</a>
+          <a class="btn btn-ghost tbc" data-note="Needs ABLE input: dossier PDF" href="#q-evidence">Download clinical dossier</a>
+          <p class="mono tiny mute">hello@ablehumanmotion.com · +34 931 892 594</p>
+        </div>
+      </div>
+    </div>
+    <footer class="foot mono tiny">
+      <span>ABLE Human Motion S.L. · C/ Marie Curie 8–14, 08042 Barcelona</span>
+      <span>Exoskeleton · Clinical evidence · Spinal cord injury · About · Careers · Distributors</span>
+      <span>Concept redesign · 2026 · <button id="review-toggle" class="review-btn">Show content gaps</button></span>
+    </footer>
+  </section>
+</main>
+
+<noscript><style>#loader{display:none}</style></noscript>
+<script type="module">
+// ABLE — concept redesign
+// One fixed WebGL canvas, directed by scroll. Everything that moves is driven by a
+// procedural sagittal-plane gait model, so the figure, the Marey ghosts, the
+// footprints, the HUD and the gait chart all read from the same numbers.
+
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import Lenis from 'lenis';
+const LAND = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP//4AAf///AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA////B//////7eAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/z//w////////wAAAAAAAAAAAAAAAAAHgAAAAAAAAAAAAAAAAAAAAAAAAAAAf//8Af//////8AAAAA/ngAAAAAAAAAAD8AAAAAAAAAAAAAAAAAAAAAAAAABxD3/w////////4AAAAAfgAAAAAAAAAAAABwAAAAAAAAAAAAAAAAAAAAAAAAAAAP/AP///////8AAAAAHAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAB5AAMSH+AH///////8AAAAAAAAAAAAAAwAAAAD/8AAAAAAAAAAAAAAAAAAAAAD7wMz78AAAP/////8AAAAAAAAAAAADwAAAA///+AAAB9AAAAAAAAAAAAAAACAAAAAMAAAAH/////8AAAAAAAAAAAAOAAAAH///4AAAAAAAAAAAAAAAAAAAAP8AIceM7AAAD/////wAAAAAAAAAAAA4AAAH/////8DAAAAAAAAAAAAAAAAAAf/+4eQ9/wAAB/////gAAAAAAAAAAABwAHAH///////4AHAAAAAAAAAAAAAAAOP/4E4///AABf////wAAAAAAAAAAABwAPP////////42f/gAAAAAAAP8AAAAAH/+A8P//4AA////+gAAAAAAB/AAAAAAfv/////////////8AAAAAB///+B/2H//DOBwf8AAn////AAAAAAA//4AAAAcPv/////////////+/n8wAP///////+A4DPzwD+AAf///wAAAAAAH///wADf//n/////////////////+AD////////////3wR/wA///4AAAAAAAH///+M////P//////////////////4E//////8//////gD/8Af//gAAAAAAAf//9+P//////////////////////Dwf//////4/////7AD+YAf/4AAf8AAAA/8f+D///////////////////////AgAf///////////zwz/gAP/gAAP4AAAB/4/+f//////////////////////8AAA///////////+DAA/gAH/gAAAAAAAH/j/////////////////////////+AAH///////////4AAgGAAD/AAAAAAAA//H/////////////////////////4AAP///////8f//wAA/AAAB+AAAAAAAB/+H/u////////////////////jP+AAAH/9z////////gAA/wAAAGAAAAAAAB//D7n///////////////////+A/YAAAA/wAB///////gAA/wwAAAAAAAAAAA//g7///////////////////+cBgAAAAADwAAf//////4AA/94AAAAAAAAAQA5+A///////////////////4AAHAAAAAADIAAP//////4AAf/8AAAAAAAAA8AA+C///////////////////wAAfgAAAAAMAAAD///////wAf/+AAAAAAAAA4AMcH///////////////////AAA/gAAAAAAAAAB///////8Af//AAAAAAAAAcANAH//////////////////8AAA/AAAAAAAAAAAf///////x///wAAAAAAAHGAGBv//////////////////+AAA+AAAAAAAAAABP////7//x///8AAAAAAAPHAf////////////////f////6AA8AAAAAAAAAAAH////5//x///8AAAAAAAPPh//////////////////////+AAwAAAAAAAAAAAD///////9///8AAAAAAAAPj//////////////////////6AAAAAAAAAAAAAAD///////////EAAAAAAAAAP//////////////////////zAAAAAAAAAAAAAAA/////////+AOAAAAAAAAA///////////////////////zAAAAAAAAAAAAAAAf/////j///gfAAAAAAAAP///////////////////////yAAAAAAAAAAAAAAAP////+B///gDgAAAAAAAH///////////////////////iAAAAAAAAAAAAAAAP/////5///wAAAAAAAAAD/////uP/x//////////////AAAAAAAAAAAAAAAAP/////5D//8AAAAAAAAAB//v//GP/D+////////////+AAAAAAAAAAAAAAAAP/////zn/8wAAAAAAAAAB//H/+AP+H+////////////8CAAAAAAAAAAAAAAAP/////zufwAAAAAAAAADj9jj/8AD+H/////////////4HgAAAAAAAAAAAAAAP/////zz/gAAAAAAAAAH/4Bw/8AB/B////////////+ACAAAAAAAAAAAAAAAP////////gAAAAAAAAAH/wAcf8PB/g////////////8AAAAAAAAAAAAAAAAAP///////8AAAAAAAAAAH/AMGPP///x///////////v4AMAAAAAAAAAAAAAAAP///////8AAAAAAAAAAH/AACOP///h//////////+JwAMAAAAAAAAAAAAAAAH///////4AAAAAAAAAAH/AAAHH///g//////////8BwAIAAAAAAAAAAAAAAAD///////wAAAAAAAAAAH+AAYCH///w//////////+g4AYAAAAAAAAAAAAAAAD///////wAAAAAAAAAAAgf+AABM//////////////gYD4AAAAAAAAAAAAAAAB///////wAAAAAAAAAAAh/+AAAA//////////////A4fwAAAAAAAAAAAAAAAA///////gAAAAAAAAAAB//8AAAA//////////////AA+AAAAAAAAAAAAAAAAAP/////+AAAAAAAAAAAD//+AAAB//////////////gDAAAAAAAAAAAAAAAAAAH/////8AAAAAAAAAAAH///4GAB//////////////gDAAAAAAAAAAAAAAAAAAG/////4AAAAAAAAAAAP///8P4D//////////////wAAAAAAAAAAAAAAAAAAACf////4AAAAAAAAAAAP////v////////////////gAAAAAAAAAAAAAAAAAAABP//hAYAAAAAAAAAAAP/////////H///////////wAAAAAAAAAAAAAAAAAAAAv//AAYAAAAAAAAAAAf/////////H///////////gAAAAAAAAAAAAAAAAAAAAz/+AAcAAAAAAAAAAB///////8//h///////////gAAAAAAAAAAAAAAAAAAAAR/+AAMAAAAAAAAAAD///////8//wH//////////AAAAAAAAAAAAAAAAAAAAAJ/+AAAAAAAAAAAAAH///////+f/4B/////////+AAAAAAAAAAAAAAAAAAAAAI/8AAAAAAAAAAAAAH///////+P/84Af///////8QAAAAAAAAAAAAAAAAAAAAAf8AAAAAAAAAAAAAP////////H//+AP///////4gAAAAAAAAAAAAAAAAAAAAAP8AAOAAAAAAAAAAP////////H///AH///////AAAAAAAAAAAAAAAAAAAAAAAH8AQBgAAAAAAAAAf////////n//+AD//4P//YAAAAAAAAAAAAAAAAAAAAAAAH+A4AYAAAAAAAAAP////////j//8AAf/4H/+AAAAAAAAAAAAAAAAAAAAAAAAH/BwABwAAAAAAAAP////////h//8AAf/gD/8YAAAAAAAAAAAAAAAAAAAAAAAD/nwAAwAAAAAAAAP////////x//4AAf/AD/8QAAAAAAAAAAAAAAAAAAAAAAAAf/wAAAAAAAAAAAP////////4//gAAf+AB/+AAwAAAAAAAAAAAAAAAAAAAAAAH/wAAAAAAAAAAAP////////4f+AAAf8ADf/AAwAAAAAAAAAAAAAAAAAAAAAAAH/AAAAAAAAAAAf////////8f8AAAPwAAP/gAwAAAAAAAAAAAAAAAAAAAAAAAD/gAAAAAAAAAAf////////+fgAAAPwAAP/gAQAAAAAAAAAAAAAAAAAAAAAAAAfAAAAAAAAAAAf/////////cAAAAHwAAP/gAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAAAf/////////gAAAAHwAAE/gAAAAAAAAAAAAAAAAAAAAAAAAAABABIAAAAAAAAH/////////gIAAADwAAEfgAAAAAAAAAAAAAAAAAAAAAAAAAADgH/IAAAAAAAH/////////34AAADwAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAgPf+AAAAAAAD//////////4AAADgAAIEAAAAAAAAAAAAAAAAAAAAAAAAAAAAc///AAAAAAAB//////////wAAABIAAMAAADAAAAAAAAAAAAAAAAAAAAAAAAAA///gAAAAAAA//////////wAAAAMAAEAAADAAAAAAAAAAAAAAAAAAAAAAAAAAf//wAAAAAAAf/7///////gAAAAIAADAAADAAAAAAAAAAAAAAAAAAAAAAAAAAf///gAAAAAAP/B///////gAAAAAAADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAf///wAAAAAAAAAn//////AAAAAAAAxgA8AAAAAAAAAAAAAAAAAAAAAAAAAAAf///4AAAAAAAAAD/////+AAAAAAAAZgB8AAAAAAAAAAAAAAAAAAAAAAAAAAA////4AAAAAAAAAD/////8AAAAAAAAMwH8AAAAAAAAAAAAAAAAAAAAAAAAAAB////8AAAAAAAAAD/////wAAAAAAAAHQf8AAAAAAAAAAAAAAAAAAAAAAAAAAD////8AAAAAAAAAH/////gAAAAAAAAHgf8AAAAAAAAAAAAAAAAAAAAAAAAAAD////+AAAAAAAAAH///z/AAAAAAAAADwf4AAgAAAAAAAAAAAAAAAAAAAAAAAH/////4AAAAAAAAH///z/AAAAAAAAABwP5wAwAAAAAAAAAAAAAAAAAAAAAAAD/////+AAAAAAAAD////+AAAAAAAAAB8PxwAT4AAAAAAAAAAAAAAAAAAAAAAD//////4AAAAAAAB////8AAAAAAAAAA8AxQAf+AAAAAAAAAAAAAAAAAAAAAAH//////8AAAAAAAA////4AAAAAAAAAAcAAIAD/gAAAAAAAAAAAAAAAAAAAAAH///////gAAAAAAA//+/4AAAAAAAAAAMAAAAA/wAAAAAAAAAAAAAAAAAAAAAD///////gAAAAAAAf///4AAAAAAAAAADAAAAAf4AAAAAAAAAAAAAAAAAAAAAB///////gAAAAAAAf///4AAAAAAAAAAB+AAAA/4AAAAAAAAAAAAAAAAAAAAAB///////gAAAAAAAf///4AAAAAAAAAAAAAAAAOMAAAAAAAAAAAAAAAAAAAAAA///////AAAAAAAAf///8AAAAAAAAAAAAACAAAGAAAAAAAAAAAAAAAAAAAAAA//////+AAAAAAAAP///8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAf/////+AAAAAAAAP//98AAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAf/////8AAAAAAAAf//9+AAAAAAAAAAAAAAB8CAAAAAAAAAAAAAAAAAAAAAAAP/////4AAAAAAAAf///+AwAAAAAAAAAAAAD8DAAAAAAAAAAAAAAAAAAAAAAAP/////4AAAAAAAA////+AwAAAAAAAAAAAA38DgAAAAAAAAAAAAAAAAAAAAAAH/////4AAAAAAAA////8BwAAAAAAAAAAAB/8DgAAAAAAAAAAAAAAAAAAAAAAB/////4AAAAAAAA////8HwAAAAAAAAAAAD//HwAAAAAAAAAAAAAAAAAAAAAAAf////4AAAAAAAA////wPgAAAAAAAAAAAP//3wAAAAAAAAAAAAAAAAAAAAAAAP////wAAAAAAAA////APgAAAAAAAAAAAP///wAAAAAAAAAAAAAAAAAAAAAAAP////wAAAAAAAAf//+APgAAAAAAAAAAAf///4AAAAAAAAAAAAAAAAAAAAAAAP////wAAAAAAAAf//+APgAAAAAAAAAAD////+AAAAAAAAAAAAAAAAAAAAAAAP////gAAAAAAAAP//+APAAAAAAAAAAAf////+AAAAAAAAAAAAAAAAAAAAAAAP////AAAAAAAAAP//+AfAAAAAAAAAAA//////AAAAAAAAAAAAAAAAAAAAAAAP///4AAAAAAAAAH//+APAAAAAAAAAAA//////gAAAAAAAAAAAAAAAAAAAAAAf///gAAAAAAAAAH//+AOAAAAAAAAAAA//////wAAAAAAAAAAAAAAAAAAAAAAf///AAAAAAAAAAH//4AAAAAAAAAAAAA//////4AAAAAAAAAAAAAAAAAAAAAAf//+AAAAAAAAAAH//4AAAAAAAAAAAAA//////4AAAAAAAAAAAAAAAAAAAAAAf//+AAAAAAAAAAH//4AAAAAAAAAAAAA//////4AAAAAAAAAAAAAAAAAAAAAAf//+AAAAAAAAAAD//wAAAAAAAAAAAAAf/////8AAAAAAAAAAAAAAAAAAAAAAf//8AAAAAAAAAAB//gAAAAAAAAAAAAAf/////4AAAAAAAAAAAAAAAAAAAAAA///4AAAAAAAAAAB//gAAAAAAAAAAAAAf/////4AAAAAAAAAAAAAAAAAAAAAA///wAAAAAAAAAAA//AAAAAAAAAAAAAAP/////4AAAAAAAAAAAAAAAAAAAAAAf//gAAAAAAAAAAA/8AAAAAAAAAAAAAAP+AP//wAAAAAAAAAAAAAAAAAAAAAA///gAAAAAAAAAAA/4AAAAAAAAAAAAAAf8AH//gAAAAAAAAAAAAAAAAAAAAAA///AAAAAAAAAAAAQAAAAAAAAAAAAAAAOAAA//gAAAAAAAAAAAAAAAAAAAAAA//4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAf/AAAAAAAAAAAAAAAAAAAAAAB//4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/AAAAAAAAAAAAAAAAAAAAAAB//4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/AAAAQAAAAAAAAAAAAAAAAAB//gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABIAAAAcAAAAAAAAAAAAAAAAAB/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAD/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAD/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAADAAAAAAAAAAAAAAAAAAB/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAAHAAAAAAAAAAAAAAAAAAB/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAD/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAD+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4AAAAAAAAAAAAAAAAAAH+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAD/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAyQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/AAAAAAAAAAAAAAAAAAH4AAAD+D/+PgHD/AAAAAAAAAAAAAAAAAAAAAAAAAB+AAAAAAAAAAAAAAAAAD//kAAD//////////AAAAAAAAAAAAAAAAAAAAAAAAB+AAAAAAAAAAAAAAAAB////+w////////////0AAAAAAAAAAAAAAAAAAAAAB3+AAAAAAAAABAAMAA+D///////////////////8AAAAAAAAAAAAAAAAAAAAD/+AAAAAAAAB///////////////////////////+gAAAAAAAAAAAAAAAAAAAD//AAAAAAAA//////////////////////////////wAAAAAAAAAAAAAB/gAAB//AAAAAAAf//////////////////////////////wAAAAAAAAABgAAB///H///AAAAAAD//////////////////////////////8AAAAAAAAAH///4A//////+AAAAAA///////////////////////////////4AAAAAAABf/////////////gAAAAD///////////////////////////////gAAAAAAA///////////////+AAAA////////////////////////////////gAAAAAD//////////////////AAf////////////////////////////////x+A//3/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////";
+
+/* ============================================================
+   Utilities
+   ============================================================ */
+const TAU = Math.PI * 2, D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = t => t * t * (3 - 2 * t);
+const easeIO = t => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const damp = (a, b, l, dt) => lerp(a, b, 1 - Math.exp(-l * dt));
+const mod = (x, m = 1) => ((x % m) + m) % m;
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isMobile = () => innerWidth < 760;
+
+const loader = {
+  bar: $('#loader-bar'), pct: $('#loader-pct'),
+  set(v) { this.bar.style.transform = `scaleX(${v})`; this.pct.textContent = Math.round(v * 100) + '%'; },
+  done() { $('#loader').classList.add('done'); },
+};
+loader.set(0.15);
+
+/* ============================================================
+   Gait model
+   Periodic cubic-Hermite curves through typical sagittal joint
+   angles (degrees) over one gait cycle, right leg; left = +50%.
+   ============================================================ */
+function periodic(keys) {
+  const n = keys.length, xs = keys.map(k => k[0]), ys = keys.map(k => k[1] * D2R);
+  const X = i => xs[mod(i, n)] + Math.floor(i / n);
+  const Y = i => ys[mod(i, n)];
+  const m = ys.map((_, i) => {
+    const d0 = (Y(i) - Y(i - 1)) / (X(i) - X(i - 1));
+    const d1 = (Y(i + 1) - Y(i)) / (X(i + 1) - X(i));
+    return (d0 + d1) / 2;
+  });
+  return p => {
+    p = mod(p);
+    let i = 0;
+    for (let j = 0; j < n; j++) if (xs[j] <= p) i = j;
+    const x1 = X(i), x2 = X(i + 1), h = x2 - x1, t = (p - x1) / h;
+    const t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * Y(i) + (t3 - 2 * t2 + t) * h * m[i]
+      + (-2 * t3 + 3 * t2) * Y(i + 1) + (t3 - t2) * h * m[(i + 1) % n];
+  };
+}
+const HIP = periodic([[0, 20], [.1, 18], [.3, 3], [.5, -8], [.6, -1], [.7, 15], [.87, 22]]);
+const KNEE = periodic([[0, 4], [.14, 15], [.3, 6], [.42, 5], [.6, 34], [.71, 60], [.8, 50], [.9, 18], [.97, 5]]);
+const ANK = periodic([[0, 0], [.08, -5], [.3, 5], [.46, 8], [.6, -10], [.7, 4], [.8, 9], [.9, 4]]);
+const HIP_MEAN = 6 * D2R, KNEE_MIN = 5 * D2R;
+
+// Segment dimensions (m)
+const L1 = .44, L2 = .43, AH = .075, HEEL = .06, TOE = .19, HIPW = .1, SOLE = .012;
+const UA = .30, FA = .30, CR = .84, XPLANT = .42;
+
+function legAngles(p, amp, out) {
+  out[0] = HIP_MEAN + (HIP(p) - HIP_MEAN) * amp;
+  out[1] = KNEE_MIN + (KNEE(p) - KNEE_MIN) * amp;
+  out[2] = ANK(p) * amp;
+  return out;
+}
+function leg2D(ang, o) {
+  const [h, k, a] = ang;
+  o.kx = L1 * Math.sin(h); o.ky = -L1 * Math.cos(h);
+  const s = h - k;
+  o.ax = o.kx + L2 * Math.sin(s); o.ay = o.ky - L2 * Math.cos(s);
+  const f = s + a, c = Math.cos(f), sn = Math.sin(f);
+  o.hx = o.ax - HEEL * c + AH * sn; o.hy = o.ay - HEEL * sn - AH * c;
+  o.tx = o.ax + TOE * c + AH * sn; o.ty = o.ay + TOE * sn - AH * c;
+  o.h = h; o.k = k; o.a = a; o.f = f;
+  return o;
+}
+const _ang = [0, 0, 0], _R = {}, _L = {};
+function legsAt(p, amp) {
+  leg2D(legAngles(p, amp, _ang), _R);
+  leg2D(legAngles(p + .5, amp, _ang), _L);
+}
+function contactCode(p, amp) {
+  legsAt(p, amp);
+  let m = _R.hy, c = 0;
+  if (_R.ty < m) { m = _R.ty; c = 1; }
+  if (_L.hy < m) { m = _L.hy; c = 2; }
+  if (_L.ty < m) { c = 3; }
+  return c;
+}
+function contactX(p, amp, c) {
+  legsAt(p, amp);
+  return c === 0 ? _R.hx : c === 1 ? _R.tx : c === 2 ? _L.hx : _L.tx;
+}
+// Ground displacement between two phases: the planted point must not skate.
+function groundDelta(p0, p1, amp) {
+  const n = Math.max(1, Math.ceil(Math.abs(p1 - p0) / .01));
+  let d = 0;
+  for (let i = 0; i < n; i++) {
+    const a = p0 + (p1 - p0) * i / n, b = p0 + (p1 - p0) * (i + 1) / n;
+    const c = contactCode(b, amp);
+    d += contactX(b, amp, c) - contactX(a, amp, c);
+  }
+  return d;
+}
+// Cumulative ground-displacement table for one cycle (used by ghosts & crutches).
+const DT = { amp: -1, N: 200, tab: new Float32Array(201), tot: 0 };
+function ensureDTable(amp) {
+  if (Math.abs(DT.amp - amp) < .004) return;
+  DT.amp = amp; DT.tab[0] = 0;
+  for (let i = 0; i < DT.N; i++) DT.tab[i + 1] = DT.tab[i] + groundDelta(i / DT.N, (i + 1) / DT.N, amp);
+  DT.tot = DT.tab[DT.N];
+}
+function Dfun(q) {
+  const f = Math.floor(q), r = (q - f) * DT.N, i = Math.floor(r), t = r - i;
+  return f * DT.tot + lerp(DT.tab[i], DT.tab[Math.min(i + 1, DT.N)], t);
+}
+
+/* ---------- full-body pose ---------- */
+const V3 = () => new THREE.Vector3();
+function makePose() {
+  const leg = () => ({ hip: V3(), knee: V3(), ankle: V3(), heel: V3(), toe: V3(), f: 0, h: 0, k: 0, a: 0 });
+  const cr = () => ({ tip: V3(), handle: V3(), elbow: V3(), cuff: V3(), dir: V3() });
+  return { py: 0, lean: 0, pelvis: V3(), neck: V3(), head: V3(), shL: V3(), shR: V3(), L: leg(), R: leg(), cL: cr(), cR: cr() };
+}
+function setLeg(o, l, py, z) {
+  o.hip.set(0, py, z); o.knee.set(l.kx, py + l.ky, z); o.ankle.set(l.ax, py + l.ay, z);
+  o.heel.set(l.hx, py + l.hy, z); o.toe.set(l.tx, py + l.ty, z);
+  o.f = l.f; o.h = l.h; o.k = l.k; o.a = l.a;
+}
+const _v = V3(), _w = V3(), _d = V3(), _pp = V3(), _pole = V3();
+function ik(S, T, a, b, pole, outE) {
+  _d.subVectors(T, S);
+  let d = _d.length();
+  const dir = _d.divideScalar(d || 1);
+  d = clamp(d, .05, a + b - .002);
+  const cosA = clamp((a * a + d * d - b * b) / (2 * a * d), -1, 1);
+  const sinA = Math.sqrt(1 - cosA * cosA);
+  _pp.copy(pole).addScaledVector(dir, -pole.dot(dir)).normalize();
+  outE.copy(S).addScaledVector(dir, a * cosA).addScaledVector(_pp, a * sinA);
+}
+// Four-point crutch pattern: each crutch plants and rides the ground, then swings ahead.
+function crutch(p, C, sh, side, ws, we) {
+  const q = we + mod(p - we), lift = ws + 1;
+  let x, y = 0;
+  if (q < lift) x = XPLANT + (Dfun(q) - Dfun(we));
+  else {
+    const t = (q - lift) / (we - ws);
+    const xl = XPLANT + (Dfun(lift) - Dfun(we));
+    x = lerp(xl, XPLANT, easeIO(t)); y = .09 * Math.sin(Math.PI * t);
+  }
+  C.tip.set(x, y, side * .31);
+  _v.set(sh.x + .03, sh.y - .55, side * .27).sub(C.tip).normalize();
+  C.dir.copy(_v);
+  C.handle.copy(C.tip).addScaledVector(_v, CR);
+  ik(sh, C.handle, UA, FA, _pole.set(-1, -.3, side * .8), C.elbow);
+  _w.subVectors(C.elbow, C.handle).normalize();
+  C.cuff.copy(C.handle).addScaledVector(_w, .19);
+}
+function computePose(p, amp, P) {
+  legsAt(p, amp);
+  const py = -Math.min(_R.hy, _R.ty, _L.hy, _L.ty) + SOLE;
+  P.py = py;
+  setLeg(P.R, _R, py, -HIPW);
+  setLeg(P.L, _L, py, HIPW);
+  const lean = (7 + 1.5 * Math.sin(TAU * 2 * p + 1.2)) * D2R;
+  P.lean = lean;
+  const ux = Math.sin(lean), uy = Math.cos(lean);
+  const pc = P.pelvis.set(0, py + .05, 0);
+  P.neck.set(pc.x + ux * .46, pc.y + uy * .46, 0);
+  P.head.set(pc.x + ux * .66 + .01, pc.y + uy * .66, 0);
+  P.shL.set(pc.x + ux * .42, pc.y + uy * .42, .19);
+  P.shR.set(pc.x + ux * .42, pc.y + uy * .42, -.19);
+  crutch(p, P.cL, P.shL, 1, .4, .7);
+  crutch(p, P.cR, P.shR, -1, .9, 1.2);
+  return P;
+}
+
+/* ============================================================
+   Renderer, scene, post
+   ============================================================ */
+const canvas = $('#gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+const DPR = Math.min(devicePixelRatio, 1.75);
+renderer.setPixelRatio(DPR);
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const BG = new THREE.Color('#07080a');
+const scene = new THREE.Scene();
+scene.background = BG;
+scene.fog = new THREE.Fog(BG, 7, 17);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
+scene.environmentIntensity = .38;
+
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, .05, 60);
+camera.position.set(3.4, 1.25, 4.6);
+
+const key = new THREE.DirectionalLight('#fff4ea', 1.9);
+key.position.set(2.5, 5, 3.5);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -2.5, right: 2.5, top: 2.5, bottom: -2.5, near: .5, far: 14 });
+key.shadow.bias = -.0004; key.shadow.normalBias = .02; key.shadow.radius = 5;
+scene.add(key);
+const rim = new THREE.DirectionalLight('#ff8a5c', 2.2);
+rim.position.set(-4, 2.4, -3); scene.add(rim);
+const rim2 = new THREE.DirectionalLight('#9bb8ff', .9);
+rim2.position.set(-2, 3, 4); scene.add(rim2);
+scene.add(new THREE.HemisphereLight('#8ea3c4', '#0a0806', .35));
+
+loader.set(.3);
+
+/* ============================================================
+   Materials
+   ============================================================ */
+const ACCENT = new THREE.Color('#ff5b1f');
+const MAT = {
+  body: new THREE.MeshPhysicalMaterial({ color: '#d8d2c9', roughness: .52, clearcoat: .25, clearcoatRoughness: .5, sheen: .4, sheenColor: '#ffffff', sheenRoughness: .6 }),
+  carbon: new THREE.MeshPhysicalMaterial({ color: '#15171b', roughness: .32, metalness: .25, clearcoat: 1, clearcoatRoughness: .12 }),
+  alu: new THREE.MeshStandardMaterial({ color: '#a9aeb6', roughness: .28, metalness: 1 }),
+  strap: new THREE.MeshStandardMaterial({ color: '#2a2d33', roughness: .92, side: THREE.DoubleSide }),
+  shoe: new THREE.MeshStandardMaterial({ color: '#16181b', roughness: .75 }),
+  accent: new THREE.MeshStandardMaterial({ color: ACCENT, emissive: ACCENT, emissiveIntensity: 2.4, roughness: .4 }),
+  crutch: new THREE.MeshStandardMaterial({ color: '#8d939c', roughness: .3, metalness: .9 }),
+  grip: new THREE.MeshStandardMaterial({ color: '#202226', roughness: .8 }),
+};
+for (const m of Object.values(MAT)) m.userData.base = m.opacity;
+
+/* ============================================================
+   Figure
+   ============================================================ */
+const figure = new THREE.Group();
+scene.add(figure);
+const bones = {};
+const exoParts = [];
+const anchors = {};
+
+const Z = new THREE.Vector3(0, 0, 1);
+const _x = V3(), _y = V3(), _z = V3(), _m4 = new THREE.Matrix4();
+function setBone(o, A, B, hint = Z) {
+  _y.subVectors(A, B).normalize();
+  _z.copy(hint).addScaledVector(_y, -hint.dot(_y)).normalize();
+  _x.crossVectors(_y, _z);
+  _m4.makeBasis(_x, _y, _z);
+  o.quaternion.setFromRotationMatrix(_m4);
+  o.position.copy(A);
+}
+function mesh(geo, mat, shadow = true) {
+  const m = new THREE.Mesh(geo, mat);
+  m.castShadow = shadow; m.receiveShadow = false;
+  return m;
+}
+function limb(r1, r2, len, mat) {
+  const g = new THREE.CylinderGeometry(r1, r2, len, 32, 1);
+  g.translate(0, -len / 2, 0);
+  return mesh(g, mat);
+}
+function ball(r, mat) { return mesh(new THREE.SphereGeometry(r, 28, 18), mat); }
+function ellipsoid(sx, sy, sz, mat) { const m = ball(1, mat); m.scale.set(sx, sy, sz); return m; }
+function discZ(r, h, mat, seg = 40) {
+  const g = new THREE.CylinderGeometry(r, r, h, seg); g.rotateX(Math.PI / 2);
+  return mesh(g, mat);
+}
+function cuff(r, h, mat, start = Math.PI * .75, len = Math.PI * 1.5) {
+  return mesh(new THREE.CylinderGeometry(r, r * .97, h, 36, 1, true, start, len), mat);
+}
+function exo(parent, obj, explode, name) {
+  obj.userData.base = obj.position.clone();
+  obj.userData.explode = explode;
+  parent.add(obj); exoParts.push(obj);
+  if (name) anchors[name] = obj;
+  return obj;
+}
+function at(o, x, y, z) { o.position.set(x, y, z); return o; }
+function bone(name) { const b = new THREE.Group(); figure.add(b); bones[name] = b; return b; }
+
+function buildLeg(side, tag) {
+  const s = side, zo = s * .094;
+  // thigh
+  const th = bone('thigh' + tag);
+  th.add(limb(.079, .056, L1, MAT.body));
+  exo(th, at(mesh(new THREE.BoxGeometry(.03, .36, .012), MAT.carbon), 0, -.22, zo), new THREE.Vector3(0, 0, s * .16), tag === 'L' ? 'upright' : null);
+  exo(th, at(discZ(.046, .03, MAT.alu), 0, 0, s * .1), new THREE.Vector3(0, 0, s * .26), tag === 'L' ? 'hip' : null);
+  const hipRing = at(mesh(new THREE.TorusGeometry(.046, .003, 8, 48), MAT.accent, false), 0, 0, s * .116);
+  exo(th, hipRing, new THREE.Vector3(0, 0, s * .26));
+  exo(th, at(cuff(.088, .06, MAT.strap), 0, -.11, 0), new THREE.Vector3(.12, 0, s * .06));
+  exo(th, at(cuff(.083, .055, MAT.strap), 0, -.32, 0), new THREE.Vector3(.12, 0, s * .06));
+  // knee actuator: housing + glowing ring
+  exo(th, at(discZ(.062, .048, MAT.carbon), 0, -L1, s * .1), new THREE.Vector3(0, 0, s * .34), tag === 'L' ? 'knee' : null);
+  exo(th, at(mesh(new THREE.TorusGeometry(.061, .0045, 10, 64), MAT.accent, false), 0, -L1, s * .125), new THREE.Vector3(0, 0, s * .34));
+  // shin
+  const sh = bone('shin' + tag);
+  sh.add(ball(.057, MAT.body));
+  sh.add(limb(.055, .04, L2, MAT.body));
+  sh.add(at(ball(.042, MAT.body), 0, -L2, 0));
+  exo(sh, at(mesh(new THREE.BoxGeometry(.028, .34, .012), MAT.carbon), 0, -.21, s * .082), new THREE.Vector3(0, 0, s * .18));
+  exo(sh, at(cuff(.068, .06, MAT.strap), 0, -.15, 0), new THREE.Vector3(.12, 0, s * .06), tag === 'L' ? 'cuff' : null);
+  exo(sh, at(mesh(new THREE.BoxGeometry(.022, .09, .012), MAT.alu), 0, -.4, s * .07), new THREE.Vector3(0, 0, s * .18));
+  // rotating dial on the knee: it turns with the shank, so the articulation reads at a glance
+  const dial = new THREE.Group(); dial.position.set(0, 0, s * .135);
+  dial.add(discZ(.04, .012, MAT.alu));
+  const tick = mesh(new THREE.BoxGeometry(.008, .03, .006), MAT.accent, false);
+  tick.position.set(0, -.024, s * .007); dial.add(tick);
+  exo(sh, dial, new THREE.Vector3(0, 0, s * .42));
+  // foot
+  const ft = bone('foot' + tag);
+  const shoe = mesh(new THREE.CapsuleGeometry(.047, .17, 8, 20), MAT.shoe);
+  shoe.rotation.z = Math.PI / 2; shoe.scale.set(.82, 1, 1.12); shoe.position.set(.065, -.036, 0);
+  ft.add(shoe);
+  exo(ft, at(mesh(new THREE.BoxGeometry(.28, .008, .1), MAT.carbon), .065, -.072, 0), new THREE.Vector3(0, -.08, 0));
+  exo(ft, at(mesh(new THREE.BoxGeometry(.05, .07, .01), MAT.alu), 0, -.035, s * .065), new THREE.Vector3(0, 0, s * .18));
+}
+buildLeg(1, 'L');
+buildLeg(-1, 'R');
+
+function buildArm(tag) {
+  const ua = bone('upper' + tag);
+  ua.add(ball(.056, MAT.body)); ua.add(limb(.05, .04, UA, MAT.body));
+  const fa = bone('fore' + tag);
+  fa.add(ball(.042, MAT.body)); fa.add(limb(.04, .031, FA, MAT.body));
+  fa.add(at(ball(.038, MAT.body), 0, -FA, 0));
+  // forearm crutch
+  const shaft = bone('shaft' + tag);
+  shaft.add(limb(.011, .011, CR, MAT.crutch));
+  shaft.add(at(limb(.017, .02, .05, MAT.grip), 0, -CR + .05, 0));
+  const grip = mesh(new THREE.CylinderGeometry(.014, .014, .12, 12), MAT.grip);
+  grip.rotation.z = Math.PI / 2; grip.position.set(.05, 0, 0); shaft.add(grip);
+  const cuffB = bone('cuff' + tag);
+  cuffB.add(limb(.009, .009, .19, MAT.crutch));
+  const ring = cuff(.05, .05, MAT.grip, Math.PI * .6, Math.PI * 1.3);
+  cuffB.add(ring);
+  if (tag === 'L') anchors.crutch = ring;
+}
+buildArm('L');
+buildArm('R');
+
+// torso (pelvis group does not rotate, torso group leans)
+const pelvisG = new THREE.Group(); figure.add(pelvisG);
+pelvisG.add(ellipsoid(.135, .12, .175, MAT.body));
+const belt = new THREE.Group();
+exo(pelvisG, belt, new THREE.Vector3(-.18, 0, 0));
+const beltM = cuff(.17, .075, MAT.carbon, Math.PI / 2 + .95, TAU - 1.9);
+beltM.scale.set(1, 1, 1.18); beltM.position.y = -.01; belt.add(beltM);
+const ctrl = mesh(new THREE.BoxGeometry(.05, .11, .15), MAT.carbon);
+ctrl.position.set(-.18, .0, 0); belt.add(ctrl);
+const led = mesh(new THREE.BoxGeometry(.004, .012, .09), MAT.accent, false);
+led.position.set(-.206, .03, 0); belt.add(led);
+
+const torso = new THREE.Group(); figure.add(torso);
+torso.add(at(ellipsoid(.125, .15, .155, MAT.body), 0, .17, 0));
+torso.add(at(ellipsoid(.14, .16, .2, MAT.body), .005, .33, 0));
+torso.add(at(limb(.045, .05, .12, MAT.body), 0, .56, 0));
+const head = ellipsoid(.098, .115, .096, MAT.body); head.position.set(.012, .66, 0); torso.add(head);
+
+// contact shadow + floor glow
+const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), new THREE.ShadowMaterial({ opacity: .55, transparent: true }));
+shadowPlane.rotation.x = -Math.PI / 2; shadowPlane.receiveShadow = true; shadowPlane.position.y = .001;
+scene.add(shadowPlane);
+
+function radialTex(inner = 'rgba(255,255,255,1)', outer = 'rgba(255,255,255,0)') {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gr.addColorStop(0, inner); gr.addColorStop(1, outer);
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const pool = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), new THREE.MeshBasicMaterial({ map: radialTex('rgba(255,120,70,.55)', 'rgba(255,120,70,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .35 }));
+pool.rotation.x = -Math.PI / 2; pool.position.y = .002; scene.add(pool);
+
+/* ---------- ground grid (scrolls with the stance foot) ---------- */
+const gridMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  uniforms: { uOffset: { value: 0 }, uOpacity: { value: 1 }, uColor: { value: new THREE.Color('#d9d4cc') }, uAccent: { value: ACCENT } },
+  vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+  fragmentShader: `
+    uniform float uOffset, uOpacity; uniform vec3 uColor, uAccent; varying vec3 vW;
+    float gridLine(vec2 p, float s){ vec2 q = p/s; vec2 g = abs(fract(q-.5)-.5)/fwidth(q); return 1.-min(min(g.x,g.y),1.); }
+    void main(){
+      vec2 p = vec2(vW.x - uOffset, vW.z);
+      float minor = gridLine(p, .25), major = gridLine(p, 1.);
+      float d = length(vW.xz*vec2(.8,1.));
+      float fade = smoothstep(8.5, 1.2, d);
+      // walkway edges + metre ticks
+      float near = smoothstep(4.5, 1.5, abs(vW.x));
+      float edge = (1.-smoothstep(0.,fwidth(vW.z)*1.5, abs(abs(vW.z)-.55))) * near;
+      float tick = near * step(abs(abs(vW.z)-.55), .06) * (1.-min(abs(fract(p.x-.5)-.5)/fwidth(p.x),1.));
+      vec3 col = mix(uColor, uAccent, clamp(edge+tick,0.,1.));
+      float a = (minor*.05 + major*.13 + edge*.22 + tick*.5) * fade * uOpacity;
+      gl_FragColor = vec4(col, a);
+    }`,
+});
+const grid = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), gridMat);
+grid.rotation.x = -Math.PI / 2; grid.position.y = .0015; scene.add(grid);
+
+/* ---------- gait lab backdrop + angle arcs ---------- */
+const labMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  uniforms: { uOpacity: { value: 0 } },
+  vertexShader: `varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
+  fragmentShader: `
+    uniform float uOpacity; varying vec3 vW;
+    float gl(vec2 p,float s){ vec2 q=p/s; vec2 g=abs(fract(q-.5)-.5)/fwidth(q); return 1.-min(min(g.x,g.y),1.); }
+    void main(){
+      vec2 p = vW.xy;
+      float a = gl(p,.1)*.05 + gl(p,.5)*.16;
+      float fade = smoothstep(3.2,.6,abs(p.x)) * smoothstep(2.3,1.6,p.y);
+      float axis = (1.-min(abs(p.x)/fwidth(p.x),1.))*.35;
+      gl_FragColor = vec4(vec3(.85,.82,.78), (a+axis)*fade*uOpacity);
+    }`,
+});
+const lab = new THREE.Mesh(new THREE.PlaneGeometry(7, 2.6), labMat);
+lab.position.set(0, 1.3, -.9); scene.add(lab);
+
+const lineMats = [];
+function fatLine(nSeg, opts) {
+  const g = new LineSegmentsGeometry();
+  g.setPositions(new Float32Array(nSeg * 6));
+  if (opts.vertexColors) g.setColors(new Float32Array(nSeg * 6));
+  const m = new LineMaterial({ linewidth: 1.5, transparent: true, depthWrite: false, ...opts });
+  m.resolution.set(innerWidth, innerHeight);
+  lineMats.push(m);
+  const l = new LineSegments2(g, m);
+  l.frustumCulled = false;
+  return l;
+}
+function linePositions(l) { return l.geometry.attributes.instanceStart.data; }
+function lineColors(l) { return l.geometry.attributes.instanceColorStart.data; }
+
+const ARC_N = 28;
+const kneeArc = fatLine(ARC_N + 2, { color: ACCENT, linewidth: 2 });
+const hipArc = fatLine(ARC_N + 2, { color: new THREE.Color('#8fb7ff'), linewidth: 2 });
+scene.add(kneeArc, hipArc);
+function writeArc(line, c, a0, a1, r, z) {
+  const buf = linePositions(line), arr = buf.array;
+  let o = 0;
+  const push = (x1, y1, x2, y2) => { arr[o++] = x1; arr[o++] = y1; arr[o++] = z; arr[o++] = x2; arr[o++] = y2; arr[o++] = z; };
+  for (let i = 0; i < ARC_N; i++) {
+    const t0 = lerp(a0, a1, i / ARC_N), t1 = lerp(a0, a1, (i + 1) / ARC_N);
+    push(c.x + Math.cos(t0) * r, c.y + Math.sin(t0) * r, c.x + Math.cos(t1) * r, c.y + Math.sin(t1) * r);
+  }
+  // the two rays
+  push(c.x, c.y, c.x + Math.cos(a0) * r * 1.7, c.y + Math.sin(a0) * r * 1.7);
+  push(c.x, c.y, c.x + Math.cos(a1) * r * 1.7, c.y + Math.sin(a1) * r * 1.7);
+  buf.needsUpdate = true;
+}
+
+/* ---------- Marey ghosts ---------- */
+const GHOSTS = 7, GHOST_DP = .1, GHOST_SPREAD = .2;
+const SEGS = P => [
+  [P.pelvis, P.neck], [P.neck, P.head], [P.shL, P.shR],
+  [P.shL, P.cL.elbow], [P.cL.elbow, P.cL.handle], [P.shR, P.cR.elbow], [P.cR.elbow, P.cR.handle],
+  [P.L.hip, P.R.hip],
+  [P.L.hip, P.L.knee], [P.L.knee, P.L.ankle], [P.L.ankle, P.L.heel], [P.L.heel, P.L.toe], [P.L.toe, P.L.ankle],
+  [P.R.hip, P.R.knee], [P.R.knee, P.R.ankle], [P.R.ankle, P.R.heel], [P.R.heel, P.R.toe], [P.R.toe, P.R.ankle],
+];
+const JOINTS = P => [P.head, P.neck, P.shL, P.shR, P.cL.elbow, P.cR.elbow, P.cL.handle, P.cR.handle, P.L.hip, P.R.hip, P.L.knee, P.R.knee, P.L.ankle, P.R.ankle, P.L.toe, P.R.toe];
+const NSEG = 18, NJ = 16;
+const dotTex = radialTex('rgba(255,255,255,1)', 'rgba(255,255,255,0)');
+const ghosts = [];
+const ghostPose = makePose();
+for (let i = 0; i < GHOSTS; i++) {
+  const l = fatLine(NSEG, { color: new THREE.Color('#f3efe8'), linewidth: 1.6, blending: THREE.AdditiveBlending });
+  const pg = new THREE.BufferGeometry();
+  pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NJ * 3), 3));
+  const pts = new THREE.Points(pg, new THREE.PointsMaterial({ color: ACCENT, size: 7, sizeAttenuation: false, map: dotTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  pts.frustumCulled = false;
+  scene.add(l, pts);
+  ghosts.push({ l, pts });
+}
+function writeGhost(g, P, dx, op) {
+  const buf = linePositions(g.l), a = buf.array;
+  let o = 0;
+  for (const [A, B] of SEGS(P)) { a[o++] = A.x + dx; a[o++] = A.y; a[o++] = A.z; a[o++] = B.x + dx; a[o++] = B.y; a[o++] = B.z; }
+  buf.needsUpdate = true;
+  const pa = g.pts.geometry.attributes.position; o = 0;
+  for (const J of JOINTS(P)) { pa.array[o++] = J.x + dx; pa.array[o++] = J.y; pa.array[o++] = J.z; }
+  pa.needsUpdate = true;
+  g.l.material.opacity = op; g.pts.material.opacity = op * 1.3;
+  g.l.visible = g.pts.visible = op > .003;
+}
+
+/* ---------- motion trails (ankle + knee paths, in ground coordinates) ---------- */
+const TRAIL_N = 110;
+const trails = [
+  { get: P => P.L.ankle, pts: [], line: fatLine(TRAIL_N - 1, { vertexColors: true, linewidth: 2.2, blending: THREE.AdditiveBlending }), col: new THREE.Color('#ff5b1f') },
+  { get: P => P.L.knee, pts: [], line: fatLine(TRAIL_N - 1, { vertexColors: true, linewidth: 1.4, blending: THREE.AdditiveBlending }), col: new THREE.Color('#ffc2a6') },
+];
+trails.forEach(t => scene.add(t.line));
+
+/* ---------- footprints (progress over sessions) ---------- */
+const printTex = (() => {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 160;
+  const g = c.getContext('2d'); g.fillStyle = '#fff';
+  g.beginPath(); g.ellipse(32, 52, 22, 44, 0, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(32, 128, 17, 26, 0, 0, TAU); g.fill();
+  const t = new THREE.CanvasTexture(c); return t;
+})();
+const prints = [];
+const printGeo = new THREE.PlaneGeometry(.11, .27);
+for (let i = 0; i < 44; i++) {
+  const m = new THREE.Mesh(printGeo, new THREE.MeshBasicMaterial({ map: printTex, color: ACCENT, transparent: true, depthWrite: false, opacity: 0, blending: THREE.AdditiveBlending }));
+  m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.PI / 2; m.position.y = .003; m.visible = false;
+  scene.add(m); prints.push({ m, xg: 0, z: 0, s: 1, born: 0 });
+}
+let printIdx = 0;
+
+loader.set(.5);
+
+/* ============================================================
+   Globe
+   ============================================================ */
+const SITES = [
+  { n: 'Barcelona, ES', s: 'ABLE Human Motion HQ', lat: 41.389, lon: 2.17, t: 'HQ', label: true, off: [14, -4] },
+  { n: 'Badalona, ES', s: 'Institut Guttmann', lat: 41.45, lon: 2.247, t: 'Clinical study' },
+  { n: 'Heidelberg, DE', s: 'Heidelberg University Hospital', lat: 49.418, lon: 8.67, t: 'Clinical study', label: true, off: [16, -2] },
+  { n: 'Netherlands', s: 'Neurorehabilitation hospital', lat: 52.09, lon: 5.12, t: 'Validation', label: true, tbc: true, off: [10, -58] },
+  { n: 'United Kingdom', s: 'Neurorehabilitation hospital', lat: 52.48, lon: -1.9, t: 'Validation', label: true, tbc: true, off: [-196, -30] },
+];
+function ll2v(lat, lon, r = 1) {
+  const phi = (90 - lat) * D2R, th = (lon + 180) * D2R;
+  return new THREE.Vector3(-r * Math.sin(phi) * Math.cos(th), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(th));
+}
+const globe = new THREE.Group(); globe.position.set(0, 1, 0); scene.add(globe);
+const gTilt = new THREE.Group(), gSpin = new THREE.Group();
+globe.add(gTilt); gTilt.add(gSpin);
+const globeMats = [];
+{
+  const bin = atob(LAND), bits = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bits[i] = bin.charCodeAt(i);
+  const land = (lat, lon) => {
+    const x = clamp(Math.floor(lon + 180), 0, 359), y = clamp(Math.floor(90 - lat), 0, 179), i = y * 360 + x;
+    return (bits[i >> 3] >> (7 - (i & 7))) & 1;
+  };
+  const pos = [], hi = [];
+  const sitesV = SITES.map(s => ll2v(s.lat, s.lon));
+  for (let lat = -58; lat <= 80; lat += 1.15) {
+    const step = 1.15 / Math.max(.2, Math.cos(lat * D2R));
+    for (let lon = -180; lon < 180; lon += step) {
+      if (!land(lat, lon)) continue;
+      const v = ll2v(lat, lon);
+      pos.push(v.x, v.y, v.z);
+      let h = 0;
+      for (const s of sitesV) h = Math.max(h, 1 - clamp(v.distanceTo(s) / .09));
+      hi.push(h);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('aHi', new THREE.Float32BufferAttribute(hi, 1));
+  const m = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { uSize: { value: 10 * DPR }, uOpacity: { value: 0 }, uC1: { value: new THREE.Color('#cfcac2') }, uC2: { value: ACCENT } },
+    vertexShader: `attribute float aHi; varying float vA; varying float vHi; uniform float uSize;
+      void main(){ vec4 mv = modelViewMatrix*vec4(position,1.); vec3 n = normalize(normalMatrix*position);
+        vA = smoothstep(-.05,.45,n.z); vHi = aHi; gl_PointSize = uSize*(1.+aHi*.7)/-mv.z; gl_Position = projectionMatrix*mv; }`,
+    fragmentShader: `varying float vA; varying float vHi; uniform float uOpacity; uniform vec3 uC1, uC2;
+      void main(){ float d = length(gl_PointCoord-.5); if(d>.5) discard;
+        float a = smoothstep(.5,.15,d)*vA*uOpacity*(.5+vHi*.5); gl_FragColor = vec4(mix(uC1,uC2,vHi), a); }`,
+  });
+  globeMats.push(m);
+  gSpin.add(new THREE.Points(g, m));
+
+  const core = new THREE.Mesh(new THREE.SphereGeometry(.985, 64, 48), new THREE.MeshBasicMaterial({ color: '#0b0d10', transparent: true, opacity: 0 }));
+  globeMats.push(core.material); core.material.userData.max = .95;
+  globe.add(core);
+  const atm = new THREE.Mesh(new THREE.SphereGeometry(1.16, 64, 48), new THREE.ShaderMaterial({
+    side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uOpacity: { value: 0 } },
+    vertexShader: `varying vec3 vN; void main(){ vN = normalize(normalMatrix*normal); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+    fragmentShader: `uniform float uOpacity; varying vec3 vN; void main(){ float d = abs(vN.z); float i = pow(smoothstep(0.,.5,d), 4.)*(1.-smoothstep(.5,.62,d)); gl_FragColor = vec4(vec3(1.,.5,.3)*i*uOpacity*.3, 1.); }`,
+  }));
+  globeMats.push(atm.material);
+  globe.add(atm);
+
+  // pins + arcs
+  const hq = ll2v(SITES[0].lat, SITES[0].lon);
+  SITES.forEach((s, i) => {
+    const n = ll2v(s.lat, s.lon);
+    const pin = new THREE.Group(); pin.position.copy(n);
+    pin.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(.0025, .0025, .07, 6), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0 }));
+    stem.position.y = .035; pin.add(stem);
+    const headM = new THREE.Mesh(new THREE.SphereGeometry(.011, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffd2bf', transparent: true, opacity: 0 }));
+    headM.position.y = .07; pin.add(headM);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(.018, .022, 48), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = .002; pin.add(ring);
+    gSpin.add(pin);
+    s.pin = pin; s.ring = ring; s.mats = [stem.material, headM.material, ring.material]; s.head = headM; s.normal = n;
+    if (i > 1) {
+      const pts = [];
+      for (let k = 0; k <= 64; k++) {
+        const t = k / 64;
+        const v = hq.clone().lerp(n, t).normalize().multiplyScalar(1 + Math.sin(Math.PI * t) * .09 * hq.distanceTo(n) * 3);
+        pts.push(v);
+      }
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, .0028, 6), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false }));
+      tube.userData.count = tube.geometry.index.count;
+      tube.geometry.setDrawRange(0, 0);
+      gSpin.add(tube); s.arc = tube;
+    }
+  });
+}
+globe.visible = false;
+
+loader.set(.7);
+
+/* ============================================================
+   Post-processing
+   ============================================================ */
+const composer = new EffectComposer(renderer);
+composer.setPixelRatio(DPR);
+composer.setSize(innerWidth, innerHeight);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), .55, .5, .93);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+const vignette = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, uStrength: { value: .5 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uStrength; varying vec2 vUv;
+    void main(){ vec4 c = texture2D(tDiffuse, vUv); float v = smoothstep(.95,.2,length((vUv-.5)*vec2(1.1,1.25)));
+      c.rgb *= mix(1.-uStrength, 1., v); gl_FragColor = c; }`,
+});
+composer.addPass(vignette);
+
+/* ============================================================
+   DOM: labels, leaders, gait panel, outcomes, calculator, sites
+   ============================================================ */
+const labelsEl = $('#labels'), leadersEl = $('#leaders');
+function mkLabel(html, cls = '') { const d = document.createElement('div'); d.className = 'lbl3d ' + cls; d.innerHTML = html; d.style.opacity = 0; labelsEl.appendChild(d); return d; }
+const kneeLbl = mkLabel('Knee <b>0°</b>'), hipLbl = mkLabel('Hip <b>0°</b>');
+SITES.forEach(s => { if (s.label) s.el = mkLabel(`${s.n}<small>${s.s}</small>`, 'site'); });
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+const callouts = $$('#callouts li').map(li => {
+  const line = document.createElementNS(SVGNS, 'line');
+  const dot = document.createElementNS(SVGNS, 'circle'); dot.setAttribute('r', 3.5);
+  const halo = document.createElementNS(SVGNS, 'circle'); halo.setAttribute('r', 9); halo.setAttribute('class', 'halo');
+  leadersEl.append(line, halo, dot);
+  return { li, anchor: li.dataset.anchor, line, dot, halo };
+});
+
+// gait panel
+const PHASES = [
+  [0, 'Initial contact', 'The heel meets the floor. The powered knee is held near full extension so the leg is ready to take weight.'],
+  [.02, 'Loading response', 'Body weight moves onto the leading leg and the knee gives a few controlled degrees to absorb it.'],
+  [.12, 'Mid-stance', 'The body passes over a stable, supported limb. The crutches share the load through the arms.'],
+  [.31, 'Terminal stance', 'The heel rises and the body moves ahead of the foot, ready to push off.'],
+  [.5, 'Pre-swing', 'Weight transfers to the other leg and the knee starts to bend.'],
+  [.62, 'Initial swing', 'The knee motor drives flexion so the foot clears the ground.'],
+  [.75, 'Mid-swing', 'The leg swings through beneath the body, with the knee near its peak bend.'],
+  [.87, 'Terminal swing', 'The knee motor extends the leg, ready for the next heel contact.'],
+];
+const phaseIdx = c => { let i = 0; PHASES.forEach((p, j) => { if (c >= p[0]) i = j; }); return i; };
+const gp = { phase: $('#gp-phase'), pct: $('#gp-pct'), desc: $('#gp-desc'), cursor: $('#gp-cursor'), kdot: $('#gp-kdot'), hdot: $('#gp-hdot'), kv: $('#gp-knee-v'), hv: $('#gp-hip-v'), scrub: $('#gp-scrub'), list: $('#gp-phases'), last: -1 };
+const cx = c => 10 + c * 300, cy = deg => 118 - deg * (100 / 60);
+{
+  let dk = '', dh = '';
+  for (let i = 0; i <= 200; i++) {
+    const c = i / 200, x = cx(c).toFixed(1);
+    dk += (i ? 'L' : 'M') + x + ',' + cy(KNEE(c) * R2D).toFixed(1);
+    dh += (i ? 'L' : 'M') + x + ',' + cy(HIP(c) * R2D).toFixed(1);
+  }
+  $('#gp-knee').setAttribute('d', dk);
+  $('#gp-hip').setAttribute('d', dh);
+  $('#gp-stance').setAttribute('d', `M${cx(0)},8H${cx(.6)}V128H${cx(0)}Z`);
+  const gg = $('.gp-grid');
+  for (const deg of [0, 20, 40, 60]) { const l = document.createElementNS(SVGNS, 'line'); l.setAttribute('x1', 10); l.setAttribute('x2', 310); l.setAttribute('y1', cy(deg)); l.setAttribute('y2', cy(deg)); gg.appendChild(l); }
+  PHASES.forEach((p, i) => {
+    const li = document.createElement('li'); li.textContent = p[1]; li.dataset.i = i;
+    li.addEventListener('click', () => scrollToGait(p[0] + .01));
+    gp.list.appendChild(li);
+  });
+}
+
+// outcomes ticks
+const ticks = $('#sess-ticks');
+for (let i = 0; i < 12; i++) ticks.appendChild(document.createElement('i'));
+const tickEls = [...ticks.children];
+const metricEls = $$('.out-metrics b');
+
+// sites list
+$('#sites').innerHTML = SITES.map((s, i) => `<li class="${s.tbc ? 'tbc' : ''}" ${s.tbc ? 'data-note="Needs ABLE input: site name"' : ''}><i>${String(i + 1).padStart(2, '0')}</i><div>${s.n}<small>${s.s}</small></div><em>${s.t}</em></li>`).join('');
+const siteLis = $$('#sites li');
+
+// manifesto words
+const manifestoEl = $('[data-words]');
+const HL = new Set(['eye', 'level', 'hug', 'first', 'step', 'thousandth.']);
+manifestoEl.innerHTML = manifestoEl.textContent.trim().split(/\s+/).map(w => `<span class="w${HL.has(w.replace(/[,]/g, '')) ? ' hl' : ''}">${w}</span>`).join(' ');
+const words = [...manifestoEl.querySelectorAll('.w')];
+
+// throughput calculator
+{
+  const ids = ['hours', 'sess', 'fit', 'buf'];
+  const inp = Object.fromEntries(ids.map(k => [k, $('#c-' + k)]));
+  const out = Object.fromEntries(ids.map(k => [k, $('#o-' + k)]));
+  const bar = $('#r-bar');
+  const nf = new Intl.NumberFormat('en-GB');
+  const calc = () => {
+    const h = +inp.hours.value, s = +inp.sess.value, f = +inp.fit.value, b = +inp.buf.value;
+    out.hours.textContent = h + ' h'; out.sess.textContent = s + ' min'; out.fit.textContent = f + ' min'; out.buf.textContent = b + ' min';
+    const slot = s + f + b, day = Math.floor(h * 60 / slot);
+    $('#r-day').textContent = day;
+    $('#r-year').textContent = nf.format(day * 5 * 46);
+    $('#r-prog').textContent = Math.floor(day * 20 / 12);
+    bar.innerHTML = '';
+    const total = h * 60;
+    for (let i = 0; i < day; i++) {
+      const el = document.createElement('i'); el.style.flex = `0 0 calc(${slot / total * 100}% - 3px)`;
+      el.innerHTML = `<s style="left:0;width:${f / slot * 100}%"></s><b style="left:${f / slot * 100}%;width:${s / slot * 100}%"></b>`;
+      bar.appendChild(el);
+    }
+  };
+  ids.forEach(k => inp[k].addEventListener('input', calc));
+  calc();
+}
+
+// review mode (highlights copy that still needs ABLE's input)
+$('#review-toggle').addEventListener('click', e => {
+  const on = document.body.classList.toggle('review');
+  e.target.textContent = on ? 'Hide content gaps' : 'Show content gaps';
+});
+
+// reveal on view + counters
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  e.target.classList.add('in');
+  if (e.target.classList.contains('count')) countUp(e.target);
+  io.unobserve(e.target);
+}), { threshold: .2 });
+$$('.reveal, .count').forEach(el => io.observe(el));
+function countUp(el) {
+  const to = +el.dataset.to, nf = new Intl.NumberFormat('en-GB'), t0 = performance.now(), dur = 2200;
+  const tick = now => {
+    const t = clamp((now - t0) / dur), v = Math.round(to * (1 - Math.pow(1 - t, 4)));
+    el.textContent = nf.format(v);
+    if (t < 1) requestAnimationFrame(tick);
+  };
+  REDUCED ? (el.textContent = nf.format(to)) : requestAnimationFrame(tick);
+}
+
+/* ============================================================
+   Scroll director
+   ============================================================ */
+const lenis = new Lenis({ lerp: .09, wheelMultiplier: .9, smoothWheel: !REDUCED });
+$$('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
+  const id = a.getAttribute('href');
+  if (id.length < 2) { e.preventDefault(); lenis.scrollTo(0); return; }
+  const t = $(id); if (!t) return;
+  e.preventDefault(); lenis.scrollTo(t, { offset: id === '#contact' ? -100 : 0, duration: 1.8 });
+}));
+
+const MODES = { hero: 'walk', manifesto: 'walk', gait: 'scrub', device: 'pose', outcomes: 'session', clinic: 'walk', network: 'walk', impact: 'walk' };
+let sections = [];
+function measure() {
+  const vh = innerHeight;
+  sections = $$('.stage').map((el, i) => {
+    const top = el.offsetTop, h = el.offsetHeight;
+    return { el, i, name: el.dataset.stage, title: el.dataset.title, top, h, holdEnd: Math.max(top, top + h - vh), bottom: top + h };
+  });
+}
+function progressOf(name, y) {
+  const s = sections.find(q => q.name === name); if (!s) return 0;
+  return clamp((y - s.top) / Math.max(1, s.holdEnd - s.top));
+}
+function scrollToGait(c) {
+  const s = sections.find(q => q.name === 'gait');
+  lenis.scrollTo(s.top + (c * .92 + .04) * (s.holdEnd - s.top), { duration: 1.2 });
+}
+gp.scrub.addEventListener('input', () => {
+  const s = sections.find(q => q.name === 'gait');
+  lenis.scrollTo(s.top + (gp.scrub.value / 1000 * .92 + .04) * (s.holdEnd - s.top), { immediate: true });
+});
+
+const KEYS = ['cx', 'cy', 'cz', 'tx', 'ty', 'tz', 'fov', 'fig', 'ghost', 'trail', 'lab', 'explode', 'xray', 'globe', 'dim', 'prints', 'grid', 'pool'];
+function params(name, t, o = {}) {
+  Object.assign(o, { cx: 3.4, cy: 1.25, cz: 4.6, tx: -.75, ty: .95, tz: 0, fov: 30, fig: 1, ghost: 0, trail: 0, lab: 0, explode: 0, xray: 0, globe: 0, dim: 0, prints: 0, grid: 1, pool: 1 });
+  const mob = isMobile();
+  switch (name) {
+    case 'hero':
+      Object.assign(o, { cx: 3.9, cy: mob ? .7 : 1.4, cz: 5.4, tx: mob ? -.4 : -.95, ty: mob ? .1 : .92, ghost: 1, trail: 1 });
+      break;
+    case 'manifesto': {
+      const e = smooth(t);
+      Object.assign(o, { cx: lerp(3.0, 2.1, e), cy: lerp(1.1, .8, e), cz: lerp(3.9, 2.8, e), tx: lerp(-.3, -.1, e), ty: lerp(.85, .6, e), ghost: .3 * (1 - e), trail: 1, dim: .5 });
+      break;
+    }
+    case 'gait':
+      Object.assign(o, { cx: mob ? 0 : .15, cy: mob ? .6 : 1.0, cz: 6.6, tx: mob ? 0 : .15, ty: mob ? .45 : .92, fov: 26, lab: 1, pool: .4 });
+      break;
+    case 'device': {
+      const a = lerp(-.25, 1.05, easeIO(t)), R = 3.5;
+      const tx = mob ? 0 : .05;
+      Object.assign(o, { cx: tx + Math.sin(a) * R, cy: 1.1 + Math.sin(t * Math.PI) * .25, cz: Math.cos(a) * R, tx, ty: .8, fov: 30,
+        explode: smooth(clamp((t - .04) / .32)), xray: clamp(t * 5) * .82, pool: .6 });
+      break;
+    }
+    case 'outcomes':
+      Object.assign(o, { cx: -.7, cy: 2.0, cz: 5.3, tx: mob ? .5 : .05, ty: mob ? .35 : .62, prints: 1, trail: .35, ghost: 0 });
+      break;
+    case 'clinic':
+      Object.assign(o, { cx: 2.6, cy: 1.2, cz: 4.4, tx: 0, ty: .95, dim: .9 });
+      break;
+    case 'network': {
+      Object.assign(o, { cx: 0, cy: 1.0, cz: mob ? 6.8 : 5.6, tx: mob ? 0 : -1.25, ty: mob ? 2.0 : 1.0, fig: 0, globe: 1, grid: 0, pool: 0 });
+      break;
+    }
+    case 'impact':
+      Object.assign(o, { cx: 4.6, cy: 1.1, cz: mob ? 1.5 : 3.2, tx: 0, ty: 1.0, tz: mob ? -.7 : 1.45, ghost: 1, dim: .55, trail: 1 });
+      break;
+  }
+  if (mob) { o.cx = o.tx + (o.cx - o.tx) * 1.45; o.cz = o.tz + (o.cz - o.tz) * 1.45; o.cy = o.ty + (o.cy - o.ty) * 1.2; }
+  return o;
+}
+const _pa = {}, _pb = {}, cur = {};
+params('hero', 0, cur);
+function directorAt(y) {
+  const vh = innerHeight;
+  let s = sections[0];
+  for (const q of sections) if (y >= q.top - 1) s = q;
+  const next = sections[s.i + 1];
+  if (y <= s.holdEnd || !next) return params(s.name, clamp((y - s.top) / Math.max(1, s.holdEnd - s.top)), _pa);
+  const t = smooth(clamp((y - s.holdEnd) / Math.max(1, next.top - s.holdEnd)));
+  params(s.name, 1, _pa); params(next.name, 0, _pb);
+  for (const k of KEYS) _pa[k] = lerp(_pa[k], _pb[k], t);
+  return _pa;
+}
+
+/* ============================================================
+   Main loop
+   ============================================================ */
+const pose = makePose();
+const state = { phase: .12, amp: 1, cadence: .5, ground: 0, speed: 0, mode: 'walk', section: null, sess: 1 };
+const mouse = { x: 0, y: 0, sx: 0, sy: 0 };
+addEventListener('pointermove', e => { mouse.x = e.clientX / innerWidth * 2 - 1; mouse.y = e.clientY / innerHeight * 2 - 1; });
+
+const clock = new THREE.Clock();
+const _tmp = V3();
+let W = innerWidth, H = innerHeight, frame = 0;
+function toScreen(v) { _tmp.copy(v).project(camera); return [(_tmp.x * .5 + .5) * W, (-_tmp.y * .5 + .5) * H, _tmp.z]; }
+function nearest(target, current) { return target + Math.round(current - target); }
+
+function setFigureOpacity(f, xray) {
+  for (const [k, m] of Object.entries(MAT)) {
+    const o = f * (k === 'body' ? 1 - xray : 1);
+    const tr = o < .999;
+    if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; }
+    m.opacity = o;
+    m.depthWrite = k === 'body' ? o > .6 : true;
+  }
+  figure.visible = f > .01;
+}
+
+function tick() {
+  const dt = Math.min(clock.getDelta(), 1 / 20), time = clock.elapsedTime;
+  lenis.raf(time * 1000);
+  const y = lenis.scroll;
+  const P = directorAt(y);
+  for (const k of KEYS) cur[k] = damp(cur[k] ?? P[k], P[k], 5.5, dt);
+
+  // which section owns the viewport centre
+  let sec = sections[0];
+  for (const q of sections) if (y + H * .5 >= q.top) sec = q;
+  if (sec !== state.section) onSection(sec);
+  const mode = MODES[sec.name];
+
+  // ---- phase control
+  const prevPhase = state.phase;
+  let ampT = 1, cadT = .5;
+  if (mode === 'scrub') {
+    const g = clamp((progressOf('gait', y) - .04) / .92);
+    state.phase = damp(state.phase, nearest(g - .5, state.phase), 9, dt);
+  } else if (mode === 'pose') {
+    state.phase = damp(state.phase, nearest(.18 + Math.sin(time * .9) * .025, state.phase), 3, dt);
+  } else if (mode === 'session') {
+    const t = clamp((progressOf('outcomes', y) - .03) / .85);
+    state.sess = 1 + t * 11;
+    ampT = lerp(.58, 1, t); cadT = lerp(.2, .46, t);
+    state.phase += dt * state.cadence;
+  } else {
+    if (!REDUCED) state.phase += dt * state.cadence;
+  }
+  state.amp = damp(state.amp, ampT, 3, dt);
+  state.cadence = damp(state.cadence, cadT, 3, dt);
+  ensureDTable(state.amp);
+
+  const gd = groundDelta(prevPhase, state.phase, state.amp);
+  state.ground += gd;
+  state.speed = damp(state.speed, dt > 0 ? -gd / dt : 0, 4, dt);
+
+  // ---- figure pose
+  computePose(state.phase, state.amp, pose);
+  for (const [tag, leg, cr] of [['L', pose.L, pose.cL], ['R', pose.R, pose.cR]]) {
+    setBone(bones['thigh' + tag], leg.hip, leg.knee);
+    setBone(bones['shin' + tag], leg.knee, leg.ankle);
+    bones['foot' + tag].position.copy(leg.ankle);
+    bones['foot' + tag].rotation.set(0, 0, leg.f);
+    const sh = tag === 'L' ? pose.shL : pose.shR, side = tag === 'L' ? 1 : -1;
+    setBone(bones['upper' + tag], sh, cr.elbow, _v.set(side * .3, 0, 1).normalize());
+    setBone(bones['fore' + tag], cr.elbow, cr.handle, _v.set(side * .3, 0, 1).normalize());
+    setBone(bones['shaft' + tag], cr.handle, cr.tip, Z);
+    setBone(bones['cuff' + tag], cr.cuff, cr.handle, Z);
+  }
+  pelvisG.position.copy(pose.pelvis);
+  torso.position.copy(pose.pelvis);
+  torso.rotation.z = -pose.lean;
+
+  // exploded view
+  for (const o of exoParts) o.position.copy(o.userData.base).addScaledVector(o.userData.explode, cur.explode);
+  setFigureOpacity(cur.fig, cur.xray);
+  shadowPlane.material.opacity = .55 * cur.fig;
+  shadowPlane.visible = pool.visible = cur.fig > .01;
+  pool.material.opacity = .16 * cur.fig * cur.pool;
+
+  // ---- ground
+  gridMat.uniforms.uOffset.value = state.ground;
+  gridMat.uniforms.uOpacity.value = cur.grid;
+  grid.visible = cur.grid > .01;
+
+  // ---- ghosts (chronophotograph)
+  const gOn = cur.ghost * cur.fig;
+  for (let i = 0; i < GHOSTS; i++) {
+    const k = i + 1, lag = k * GHOST_DP;
+    const op = gOn * .5 * Math.pow(1 - i / GHOSTS, 1.5);
+    if (op > .003) {
+      computePose(state.phase - lag, state.amp, ghostPose);
+      writeGhost(ghosts[i], ghostPose, Dfun(state.phase) - Dfun(state.phase - lag) - k * GHOST_SPREAD * cur.ghost, op);
+    } else writeGhost(ghosts[i], ghostPose, 0, 0);
+  }
+
+  // ---- trails
+  for (const tr of trails) {
+    const p = tr.get(pose);
+    tr.pts.push(p.x - state.ground, p.y, p.z);
+    if (tr.pts.length > TRAIL_N * 3) tr.pts.splice(0, 3);
+    const n = tr.pts.length / 3;
+    const pos = linePositions(tr.line), col = lineColors(tr.line);
+    const on = cur.trail * cur.fig;
+    for (let i = 0; i < TRAIL_N - 1; i++) {
+      const a = Math.min(i, n - 1), b = Math.min(i + 1, n - 1);
+      const o = i * 6;
+      pos.array[o] = tr.pts[a * 3] + state.ground; pos.array[o + 1] = tr.pts[a * 3 + 1]; pos.array[o + 2] = tr.pts[a * 3 + 2];
+      pos.array[o + 3] = tr.pts[b * 3] + state.ground; pos.array[o + 4] = tr.pts[b * 3 + 1]; pos.array[o + 5] = tr.pts[b * 3 + 2];
+      const fa = Math.pow(a / (TRAIL_N - 1), 2) * on, fb = Math.pow(b / (TRAIL_N - 1), 2) * on;
+      col.array[o] = tr.col.r * fa; col.array[o + 1] = tr.col.g * fa; col.array[o + 2] = tr.col.b * fa;
+      col.array[o + 3] = tr.col.r * fb; col.array[o + 4] = tr.col.g * fb; col.array[o + 5] = tr.col.b * fb;
+    }
+    pos.needsUpdate = col.needsUpdate = true;
+    tr.line.visible = on > .01;
+  }
+
+  // ---- footprints: spawn at each heel strike during the outcomes chapter
+  if (mode === 'session' && cur.prints > .5) {
+    for (const [leg, off] of [[pose.R, 0], [pose.L, .5]]) {
+      const a = mod(prevPhase + off), b = mod(state.phase + off);
+      if (b < a && state.phase > prevPhase) {
+        const pr = prints[printIdx++ % prints.length];
+        pr.xg = (leg.heel.x + leg.toe.x) / 2 - state.ground; pr.z = leg.hip.z; pr.born = time; pr.s = state.sess;
+        pr.m.visible = true;
+      }
+    }
+  }
+  for (const pr of prints) {
+    if (!pr.m.visible) continue;
+    pr.m.position.set(pr.xg + state.ground, .003, pr.z);
+    const age = pr.m.position.x;
+    const intensity = lerp(.25, 1, (pr.s - 1) / 11);
+    pr.m.material.opacity = clamp(1 + age / 5) * cur.prints * intensity;
+    pr.m.material.color.setRGB(lerp(.55, 1, intensity), lerp(.55, .36, intensity), lerp(.55, .12, intensity));
+    if (age < -6) pr.m.visible = false;
+  }
+
+  // ---- lab overlays
+  const labOn = cur.lab * cur.fig;
+  labMat.uniforms.uOpacity.value = labOn;
+  lab.visible = labOn > .01;
+  kneeArc.visible = hipArc.visible = labOn > .02;
+  kneeArc.material.opacity = hipArc.material.opacity = labOn;
+  const kneeDeg = pose.L.k * R2D, hipDeg = pose.L.h * R2D;
+  if (labOn > .02) {
+    const thighA = Math.atan2(pose.L.knee.y - pose.L.hip.y, pose.L.knee.x - pose.L.hip.x);
+    const shinA = Math.atan2(pose.L.ankle.y - pose.L.knee.y, pose.L.ankle.x - pose.L.knee.x);
+    writeArc(kneeArc, pose.L.knee, thighA, shinA, .14, .3);
+    writeArc(hipArc, pose.L.hip, -Math.PI / 2, thighA, .2, .3);
+  }
+
+  // ---- globe
+  globe.visible = cur.globe > .01;
+  if (globe.visible) {
+    const gp_ = progressOf('network', y);
+    for (const m of globeMats) { const v = cur.globe * (m.userData.max ?? 1); if (m.uniforms) m.uniforms.uOpacity.value = v; else m.opacity = v; }
+    globe.scale.setScalar(lerp(.7, 1, smooth(cur.globe)));
+    gTilt.rotation.x = 47 * D2R;
+    gSpin.rotation.y = -Math.PI / 2 - (lerp(-14, 10, gp_) + Math.sin(time * .15) * 2) * D2R;
+    SITES.forEach((s, i) => {
+      const reveal = smooth(clamp((gp_ - .06 - i * .09) / .12)) * cur.globe;
+      s.mats[0].opacity = s.mats[1].opacity = reveal;
+      const pulse = mod(time * .6 + i * .2);
+      s.ring.scale.setScalar(1 + pulse * 2.4); s.mats[2].opacity = reveal * (1 - pulse);
+      if (s.arc) s.arc.geometry.setDrawRange(0, Math.floor(s.arc.userData.count * smooth(clamp((gp_ - .1 - i * .09) / .2))) * (cur.globe > .5 ? 1 : 0));
+      siteLis[i].classList.toggle('on', reveal > .5);
+      if (s.el) {
+        s.head.getWorldPosition(_w);
+        const [sx, sy] = toScreen(_w);
+        const facing = _v.copy(_w).sub(globe.position).normalize().dot(_d.copy(camera.position).sub(_w).normalize());
+        s.el.style.transform = `translate(${sx + s.off[0]}px, ${sy + s.off[1]}px)`;
+        s.el.style.opacity = reveal * clamp(facing * 3) * (isMobile() ? 0 : 1);
+      }
+    });
+  } else SITES.forEach(s => s.el && (s.el.style.opacity = 0));
+
+  // ---- camera
+  mouse.sx = damp(mouse.sx, REDUCED ? 0 : mouse.x, 2.5, dt);
+  mouse.sy = damp(mouse.sy, REDUCED ? 0 : mouse.y, 2.5, dt);
+  camera.position.set(cur.cx + mouse.sx * .22, cur.cy - mouse.sy * .12, cur.cz);
+  camera.lookAt(cur.tx, cur.ty, cur.tz);
+  if (Math.abs(camera.fov - cur.fov) > .01) { camera.fov = cur.fov; camera.updateProjectionMatrix(); }
+  $('#dim').style.opacity = cur.dim;
+
+  // ---- DOM sync
+  updateDOM(y, sec, kneeDeg, hipDeg, labOn);
+
+  composer.render();
+  frame++;
+  if (frame === 2) { loader.set(1); setTimeout(() => loader.done(), 450); }
+  requestAnimationFrame(tick);
+}
+
+function onSection(sec) {
+  state.section = sec;
+  $('#chapter-n').textContent = String(sec.i + 1).padStart(2, '0');
+  $('#chapter-t').textContent = sec.title;
+  document.body.classList.toggle('hud-off', !['hero', 'manifesto'].includes(sec.name));
+  $$('.nav-links a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + sec.name));
+  $('#hud-mode').textContent = { gait: 'Gait lab: scroll-driven', device: 'Device: exploded view', outcomes: 'Training: session model' }[sec.name] || 'Live gait model';
+}
+
+function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
+  const c = mod(state.phase + .5); // left (near) leg gait cycle
+  if (frame % 3 === 0) {
+    $('#hud-cycle').textContent = Math.round(c * 100) + '%';
+    $('#hud-knee').textContent = kneeDeg.toFixed(0) + '°';
+    $('#hud-hip').textContent = hipDeg.toFixed(0) + '°';
+    $('#hud-speed').textContent = Math.max(0, state.speed).toFixed(2) + ' m/s';
+  }
+
+  // manifesto
+  if (sec.name === 'manifesto' || sec.name === 'hero') {
+    const t = progressOf('manifesto', y), n = Math.floor(t * 1.25 * words.length);
+    words.forEach((w, i) => w.classList.toggle('on', i < n));
+  }
+
+  // gait panel + joint labels
+  if (labOn > .02) {
+    const pi = phaseIdx(c);
+    if (pi !== gp.last) {
+      gp.last = pi; gp.phase.textContent = PHASES[pi][1]; gp.desc.textContent = PHASES[pi][2];
+      [...gp.list.children].forEach((li, i) => li.classList.toggle('on', i === pi));
+    }
+    gp.pct.textContent = Math.round(c * 100) + '%';
+    const x = cx(c);
+    gp.cursor.setAttribute('x1', x); gp.cursor.setAttribute('x2', x);
+    gp.kdot.setAttribute('cx', x); gp.kdot.setAttribute('cy', cy(kneeDeg));
+    gp.hdot.setAttribute('cx', x); gp.hdot.setAttribute('cy', cy(hipDeg));
+    gp.kv.textContent = kneeDeg.toFixed(0) + '°'; gp.hv.textContent = hipDeg.toFixed(0) + '°';
+    if (document.activeElement !== gp.scrub) gp.scrub.value = Math.round(c * 1000);
+    const [kx, ky] = toScreen(_v.copy(pose.L.knee).setZ(.3));
+    const [hx, hy] = toScreen(_v.copy(pose.L.hip).setZ(.3));
+    kneeLbl.style.transform = `translate(${kx + 26}px, ${ky - 10}px)`;
+    hipLbl.style.transform = `translate(${hx + 30}px, ${hy - 28}px)`;
+    kneeLbl.innerHTML = `Knee <b>${kneeDeg.toFixed(0)}°</b>`; hipLbl.innerHTML = `Hip <b>${hipDeg.toFixed(0)}°</b>`;
+  }
+  kneeLbl.style.opacity = hipLbl.style.opacity = labOn > .5 ? clamp((labOn - .5) * 2) : 0;
+
+  // device callouts
+  const devT = progressOf('device', y);
+  const devOn = sec.name === 'device' ? clamp(cur.explode * 3) : 0;
+  let curIdx = -1;
+  callouts.forEach((co, i) => {
+    const on = devT > .08 + i * .15 && sec.name === 'device';
+    co.li.classList.toggle('on', on);
+    if (on) curIdx = i;
+    const vis = on && devOn > .05 && !isMobile();
+    co.line.style.opacity = co.dot.style.opacity = co.halo.style.opacity = vis ? devOn : 0;
+    if (!vis) return;
+    anchors[co.anchor].getWorldPosition(_w);
+    const [ax, ay] = toScreen(_w);
+    const r = co.li.getBoundingClientRect();
+    const lx = r.left - 14, ly = r.top + 16;
+    co.line.setAttribute('x1', ax); co.line.setAttribute('y1', ay); co.line.setAttribute('x2', lx); co.line.setAttribute('y2', ly);
+    co.dot.setAttribute('cx', ax); co.dot.setAttribute('cy', ay);
+    co.halo.setAttribute('cx', ax); co.halo.setAttribute('cy', ay);
+  });
+  callouts.forEach((co, i) => co.li.classList.toggle('cur', i === curIdx));
+
+  // outcomes
+  if (sec.name === 'outcomes') {
+    const s = Math.floor(state.sess + .0001);
+    $('#sess-n').textContent = String(Math.min(12, s)).padStart(2, '0');
+    tickEls.forEach((t, i) => t.classList.toggle('on', i < s));
+    const k = clamp((state.sess - 2) / 9);
+    metricEls.forEach(el => { el.textContent = (1 + (+el.dataset.to - 1) * k).toFixed(1); });
+  }
+}
+
+/* ============================================================
+   Resize + boot
+   ============================================================ */
+function resize() {
+  W = innerWidth; H = innerHeight;
+  renderer.setSize(W, H);
+  composer.setSize(W, H);
+  bloom.setSize(W / 2, H / 2);
+  camera.aspect = W / H; camera.updateProjectionMatrix();
+  lineMats.forEach(m => m.resolution.set(W, H));
+  globeMats[0].uniforms.uSize.value = 10 * DPR * (H / 900);
+  measure();
+}
+addEventListener('resize', resize);
+document.fonts.ready.then(measure);
+resize();
+loader.set(.9);
+requestAnimationFrame(tick);
+
+</script>
+</body>
+</html>

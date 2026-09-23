@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ABLE Exoskeleton</title>
+<meta name="description" content="ABLE is a 9.8 kg knee-powered exoskeleton, CE-marked under EU MDR, that gets people with spinal cord injury standing and walking in clinic.">
+<meta name="theme-color" content="#07080a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+  "lenis": "https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.mjs"
+} }
+</script>
+</head>
+<body>
+
+<canvas id="gl" aria-hidden="true"></canvas>
+<div id="dim" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- Loader -->
+<div id="loader" aria-hidden="true">
+  <div class="loader-inner">
+    <div class="loader-word">ABLE</div>
+    <div class="loader-track"><span id="loader-bar"></span></div>
+    <div class="loader-meta mono"><span>Calibrating gait model</span><span id="loader-pct">0%</span></div>
+  </div>
+</div>
+
+<!-- Navigation -->
+<header class="nav">
+  <a href="#top" class="logo" aria-label="ABLE Human Motion, home">
+    <span class="logo-mark"></span><span class="logo-word">ABLE</span>
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="#gait">The step</a>
+    <a href="#device">Device</a>
+    <a href="#outcomes">Outcomes</a>
+    <a href="#clinic">For clinics</a>
+    <a href="#network">Network</a>
+  </nav>
+  <div class="nav-right">
+    <span class="lang mono"><b>EN</b> / ES</span>
+    <a class="btn btn-small" href="#contact">Book a demo</a>
+  </div>
+</header>
+
+<!-- Live HUD -->
+<aside class="hud mono" aria-hidden="true">
+  <div class="hud-row"><i class="dot"></i><span id="hud-mode">Live gait model</span></div>
+  <div class="hud-grid">
+    <span>Cycle</span><b id="hud-cycle">0%</b>
+    <span>Knee</span><b id="hud-knee">0°</b>
+    <span>Hip</span><b id="hud-hip">0°</b>
+    <span>Speed</span><b id="hud-speed">0.00 m/s</b>
+  </div>
+</aside>
+<div class="chapter mono" aria-hidden="true"><span id="chapter-n">01</span><i></i><span id="chapter-t">Movement</span></div>
+
+<!-- 3D callout layer -->
+<svg id="leaders" aria-hidden="true"></svg>
+<div id="labels" aria-hidden="true"></div>
+
+<main id="top">
+
+  <!-- 01 HERO -->
+  <section id="hero" class="stage" data-stage="hero" data-title="Movement">
+    <div class="hero-copy">
+      <p class="eyebrow mono reveal"><span class="pill">CE 2797 · EU MDR</span> Exoskeleton for spinal cord injury</p>
+      <h1 class="display reveal">Movement<br><em>is the product.</em></h1>
+      <p class="lede reveal">ABLE is a 9.8&nbsp;kg knee-powered exoskeleton that gets people with spinal cord injury standing and walking in your rehab gym. It takes under seven minutes to fit.</p>
+      <div class="cta-row reveal">
+        <a class="btn" href="#contact">Book a clinical demo</a>
+        <a class="btn btn-ghost" href="#gait">Watch one step <span aria-hidden="true">↓</span></a>
+      </div>
+    </div>
+    <div class="hero-foot mono reveal">
+      <span>Fig. 1 Chronophotograph of a walking ABLE user, rendered live, after Marey (1882)</span>
+      <span class="scroll-cue"><i></i>Scroll</span>
+    </div>
+  </section>
+
+  <!-- 02 MANIFESTO -->
+  <section id="manifesto" class="stage" data-stage="manifesto" data-title="Why it matters">
+    <div class="sticky">
+      <div class="manifesto-copy">
+        <p class="mono label">02 Why it matters</p>
+        <p class="manifesto" data-words>After a spinal cord injury, standing up is not a metaphor. It means being at eye level again, a hug that doesn't come from below, and a first step in months. A few weeks later it means the thousandth.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 GAIT LAB -->
+  <section id="gait" class="stage" data-stage="gait" data-title="The step">
+    <div class="sticky">
+      <div class="gait-intro">
+        <p class="mono label">03 Anatomy of a step</p>
+        <h2 class="h2">One gait cycle.<br><em>Scroll to walk it.</em></h2>
+        <p class="body">A step takes about two seconds. Scroll through the eight phases of one gait cycle and watch the powered knee work through each of them.</p>
+      </div>
+      <div class="gait-panel glass">
+        <div class="gp-head">
+          <div>
+            <p class="mono tiny mute">Phase</p>
+            <p class="gp-phase" id="gp-phase">Initial contact</p>
+          </div>
+          <p class="gp-pct mono" id="gp-pct">0%</p>
+        </div>
+        <p class="gp-desc" id="gp-desc"></p>
+        <svg class="gp-chart" id="gp-chart" viewBox="0 0 320 150" role="img" aria-label="Knee and hip angle across the gait cycle">
+          <g class="gp-grid"></g>
+          <path id="gp-stance" class="gp-stance"/>
+          <path id="gp-hip" class="gp-hip"/>
+          <path id="gp-knee" class="gp-knee"/>
+          <line id="gp-cursor" class="gp-cursor" x1="0" x2="0" y1="8" y2="128"/>
+          <circle id="gp-kdot" r="3.5" class="gp-kdot"/>
+          <circle id="gp-hdot" r="3" class="gp-hdot"/>
+          <text x="4" y="146" class="gp-axis">0%</text>
+          <text x="316" y="146" text-anchor="end" class="gp-axis">100% gait cycle</text>
+          <text x="4" y="18" class="gp-axis">60°</text>
+        </svg>
+        <div class="gp-legend mono tiny">
+          <span><i class="sw sw-knee"></i>Knee flexion <b id="gp-knee-v">0°</b></span>
+          <span><i class="sw sw-hip"></i>Hip flexion <b id="gp-hip-v">0°</b></span>
+          <span><i class="sw sw-stance"></i>Stance</span>
+        </div>
+        <input id="gp-scrub" class="scrub" type="range" min="0" max="1000" value="0" aria-label="Scrub through the gait cycle">
+        <ol class="gp-phases mono tiny" id="gp-phases"></ol>
+      </div>
+      <p class="gait-note mono tiny mute">Kinematics show a typical sagittal-plane gait pattern for illustration. They are not recorded device data.</p>
+    </div>
+  </section>
+
+  <!-- 04 DEVICE -->
+  <section id="device" class="stage" data-stage="device" data-title="The device">
+    <div class="sticky">
+      <div class="device-copy">
+        <p class="mono label">04 The device</p>
+        <h2 class="h2">Built for the gym floor,<br><em>not the showroom.</em></h2>
+        <p class="body">Everything a therapist needs to get a patient standing, and nothing to wrestle with between sessions.</p>
+      </div>
+      <ul class="spec-strip mono">
+        <li><b>9.8<small>kg</small></b><span>Device weight</span></li>
+        <li><b>150–190<small>cm</small></b><span>User height</span></li>
+        <li><b>≤100<small>kg</small></b><span>User weight</span></li>
+        <li><b>C5–L5</b><span>Injury levels</span></li>
+        <li><b>&lt;7<small>min</small></b><span>To fit</span></li>
+      </ul>
+      <ol class="callout-list" id="callouts">
+        <li data-anchor="knee"><span class="mono">01</span><div><h3>Powered knee</h3><p>A motorised joint drives knee flexion and extension through the step.</p></div></li>
+        <li data-anchor="hip"><span class="mono">02</span><div><h3>Passive hip</h3><p>The hip joint is unpowered, so the pelvis moves naturally and the device stays light.</p></div></li>
+        <li data-anchor="upright"><span class="mono">03</span><div><h3>Adjustable uprights</h3><p>Thigh and shank segments adjust to fit users from 150 to 190&nbsp;cm.</p></div></li>
+        <li data-anchor="cuff"><span class="mono">04</span><div><h3>Quick-fit cuffs</h3><p>Fitting and removal averaged 6:50 minutes across the multicentre trial.</p></div></li>
+        <li data-anchor="crutch"><span class="mono">05</span><div><h3>Crutch-assisted balance</h3><p>Users walk with forearm crutches. Elbow extensors need at least 4/5 strength in both arms.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 05 OUTCOMES -->
+  <section id="outcomes" class="stage" data-stage="outcomes" data-title="Outcomes">
+    <div class="sticky">
+      <div class="out-head">
+        <p class="mono label">05 A stride over time</p>
+        <h2 class="h2">Twelve sessions.<br><em>Watch the stride open up.</em></h2>
+      </div>
+      <div class="out-session">
+        <p class="mono tiny mute">Training session</p>
+        <p class="out-num"><span id="sess-n">01</span><small>/12</small></p>
+        <div class="out-ticks" id="sess-ticks"></div>
+        <p class="mono tiny mute">4 weeks · 3 sessions a week · n = 24</p>
+      </div>
+      <div class="out-metrics">
+        <div class="metric"><b data-to="2.6">1.0</b><span>× walking time per session</span></div>
+        <div class="metric"><b data-to="3.0">1.0</b><span>× steps per session</span></div>
+        <div class="metric"><b data-to="2.1">1.0</b><span>× faster 10&nbsp;m walk test</span></div>
+        <div class="metric"><b data-to="1.9">1.0</b><span>× further 6-minute walk test</span></div>
+      </div>
+      <p class="out-cite mono tiny mute">Session 2 vs. session 11, cohort means. Wright M.A. et al., <i>J NeuroEng Rehabil</i> 20:45 (2023). Multicentre study at Institut Guttmann and Heidelberg University Hospital. Intermediate values are interpolated for illustration.</p>
+    </div>
+  </section>
+
+  <!-- 06 FOR CLINICS -->
+  <section id="clinic" class="stage flow" data-stage="clinic" data-title="For clinics">
+    <div class="wrap">
+      <header class="clinic-head">
+        <p class="mono label">06 For clinic directors &amp; procurement</p>
+        <h2 class="h2 reveal">The six questions<br><em>your committee will ask.</em></h2>
+        <p class="body reveal">A capital purchase deserves straight answers. Here they are, sourced, before anyone asks for a meeting.</p>
+      </header>
+
+      <div class="qa">
+        <article class="q reveal" id="q-ce">
+          <p class="q-n mono">Q1</p>
+          <h3>Is it CE marked?</h3>
+          <p class="q-a"><em>Yes, under the EU Medical Device Regulation.</em></p>
+          <dl class="kv mono">
+            <dt>Certificate</dt><dd>CE 2797 · MDR 2017/745</dd>
+            <dt>Since</dt><dd>April 2024</dd>
+            <dt>Indication</dt><dd>Spinal cord injury, C5–L5</dd>
+            <dt>Setting</dt><dd>Rehab institutions, supervised by a trained therapist</dd>
+            <dt>Requirement</dt><dd>Elbow extensors ≥ 4/5, both arms</dd>
+          </dl>
+        </article>
+
+        <article class="q q-wide reveal" id="q-evidence">
+          <p class="q-n mono">Q2</p>
+          <h3>What is the clinical evidence?</h3>
+          <p class="q-a"><em>Peer-reviewed, multicentre, registered trials.</em></p>
+          <ul class="refs">
+            <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10091314/" target="_blank" rel="noopener"><span class="mono">2023 · J NeuroEng Rehabil</span><b>Multicentre safety, feasibility &amp; usability</b><small>n = 24 · Institut Guttmann (ES), Heidelberg Univ. Hospital (DE) · 12 sessions</small></a></li>
+            <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11464447/" target="_blank" rel="noopener"><span class="mono">2024 · J NeuroEng Rehabil</span><b>Home &amp; community skills with a personal-use exoskeleton</b><small>n = 10 · SCI C5–T11</small></a></li>
+            <li><a href="https://www.tandfonline.com/doi/abs/10.1080/09638288.2025.2496351" target="_blank" rel="noopener"><span class="mono">2025 · Disability &amp; Rehabilitation</span><b>Co-creation with clinicians and patients</b><small>Pilot study and comparative analysis</small></a></li>
+          </ul>
+          <p class="mono tiny mute trials">Registered: <a href="https://clinicaltrials.gov/study/NCT04876794" target="_blank" rel="noopener">NCT04876794</a> · <a href="https://clinicaltrials.gov/study/NCT05590065" target="_blank" rel="noopener">NCT05590065</a> · <a href="https://clinicaltrials.gov/study/NCT05643313" target="_blank" rel="noopener">NCT05643313</a> · <a href="https://clinicaltrials.gov/study/NCT07062575" target="_blank" rel="noopener">NCT07062575</a></p>
+        </article>
+
+        <article class="q q-calc reveal" id="q-throughput">
+          <p class="q-n mono">Q3</p>
+          <h3>How many patients a day can I run through it?</h3>
+          <p class="q-a"><em>Set your own schedule and see.</em></p>
+          <div class="calc">
+            <div class="calc-in">
+              <label><span>Gym hours per day</span><output id="o-hours">8 h</output><input type="range" id="c-hours" min="4" max="12" step="0.5" value="8"></label>
+              <label><span>Walking session length</span><output id="o-sess">45 min</output><input type="range" id="c-sess" min="20" max="90" step="5" value="45"></label>
+              <label><span>Fit &amp; remove</span><output id="o-fit">7 min</output><input type="range" id="c-fit" min="4" max="15" step="1" value="7"></label>
+              <label><span>Turnover buffer</span><output id="o-buf">5 min</output><input type="range" id="c-buf" min="0" max="20" step="1" value="5"></label>
+            </div>
+            <div class="calc-out">
+              <div class="big"><b id="r-day">8</b><span>patient sessions / day</span></div>
+              <div class="row"><b id="r-year">1,840</b><span>sessions / year (46 wks × 5 days)</span></div>
+              <div class="row"><b id="r-prog">13</b><span>patients on a 12-session programme, every month</span></div>
+              <div class="bar" id="r-bar" aria-hidden="true"></div>
+            </div>
+          </div>
+          <p class="mono tiny mute">Estimate only. The fit time default (7 min) comes from the multicentre trial mean of 6:50 ± 2:50.</p>
+        </article>
+
+        <article class="q reveal" id="q-reimb">
+          <p class="q-n mono">Q4</p>
+          <h3>What's the reimbursement situation?</h3>
+          <p class="q-a"><em>It depends on your country, and we'll map it for you.</em></p>
+          <p class="body-s tbc" data-note="Needs ABLE input: per-market codes and payer precedents">Reimbursement for robotic gait training varies by country, payer and care setting. Before you buy, our market access team prepares a dossier for your committee covering the applicable codes, payer precedents and a budget-impact case.</p>
+          <a class="link mono" href="#contact">Request your market dossier →</a>
+        </article>
+
+        <article class="q reveal" id="q-staff">
+          <p class="q-n mono">Q5</p>
+          <h3>How long does my staff take to learn it?</h3>
+          <p class="q-a"><em>Therapists rate it highly. The best-rated attributes are weight, durability and size.</em></p>
+          <dl class="kv mono">
+            <dt>Therapist satisfaction</dt><dd>31.6 / 40 · QUEST 2.0 · 11 therapists</dd>
+            <dt>Patient satisfaction</dt><dd>31.7 / 40 · QUEST 2.0</dd>
+            <dt>Fitting time</dt><dd>6:50 ± 2:50 min (trial mean)</dd>
+            <dt class="tbc" data-note="Needs ABLE input: onboarding length and format">Onboarding</dt><dd class="tbc" data-note="Needs ABLE input">On-site certification programme, run by ABLE clinical specialists</dd>
+          </dl>
+        </article>
+
+        <article class="q reveal" id="q-who">
+          <p class="q-n mono">Q6</p>
+          <h3>Who in my country already uses it?</h3>
+          <p class="q-a"><em>Neurorehab hospitals in Spain, Germany, the Netherlands and the UK.</em></p>
+          <p class="body-s">Clinical validation has run in all four countries, at hospitals including Institut Guttmann and Heidelberg University Hospital. We'll put you in touch with a reference clinic near you.</p>
+          <a class="link mono" href="#network">See the network ↓</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 NETWORK -->
+  <section id="network" class="stage" data-stage="network" data-title="Network">
+    <div class="sticky">
+      <div class="net-copy">
+        <p class="mono label">07 Network</p>
+        <h2 class="h2">Already walking<br><em>across Europe.</em></h2>
+        <ul class="sites mono" id="sites"></ul>
+        <a class="btn btn-ghost" href="#contact">Talk to a reference clinic</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 IMPACT + CTA -->
+  <section id="impact" class="stage" data-stage="impact" data-title="Next step">
+    <div class="wrap impact">
+      <div class="impact-nums">
+        <div><b class="count" data-to="200">0</b><sup>+</sup><span class="mono">people with neurological impairments</span></div>
+        <div><b class="count" data-to="1000000">0</b><sup>+</sup><span class="mono">steps taken in ABLE</span></div>
+      </div>
+      <p class="impact-line reveal">Each of those steps was the first in a long time for someone.</p>
+      <div class="cta-card glass reveal" id="contact">
+        <div>
+          <p class="mono label">Next step</p>
+          <h2 class="h2">See ABLE walk<br><em>in your gym.</em></h2>
+          <p class="body">We'll bring the device, fit a patient or a volunteer and run a full session with your team. You'll have the evidence pack, a throughput model and the reimbursement dossier.</p>
+        </div>
+        <div class="cta-actions">
+          <a class="btn" href="mailto:hello@ablehumanmotion.com?subject=Clinical%20demo%20request">Book a clinical demo</a>
+          <a class="btn btn-ghost tbc" data-note="Needs ABLE input: dossier PDF" href="#q-evidence">Download clinical dossier</a>
+          <p class="mono tiny mute">hello@ablehumanmotion.com · +34 931 892 594</p>
+        </div>
+      </div>
+    </div>
+    <footer class="foot mono tiny">
+      <span>ABLE Human Motion S.L. · C/ Marie Curie 8–14, 08042 Barcelona</span>
+      <span>Exoskeleton · Clinical evidence · Spinal cord injury · About · Careers · Distributors</span>
+      <span>Concept redesign · 2026 · <button id="review-toggle" class="review-btn">Show content gaps</button></span>
+    </footer>
+  </section>
+</main>
+
+<noscript><style>#loader{display:none}</style></noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
