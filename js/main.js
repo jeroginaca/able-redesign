@@ -1241,9 +1241,6 @@ function tick() {
 
 function onSection(sec) {
   state.section = sec;
-  $('#chapter-n').textContent = String(sec.i + 1).padStart(2, '0');
-  $('#chapter-t').textContent = sec.title;
-  document.body.classList.toggle('hud-off', !['hero', 'manifesto'].includes(sec.name));
   $$('.nav-links a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + sec.name));
 }
 
