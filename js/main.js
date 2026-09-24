@@ -747,6 +747,7 @@ const kneeLbl = mkLabel('Knee <b>0°</b>'), hipLbl = mkLabel('Hip <b>0°</b>');
 SITES.forEach(s => { if (s.label) s.el = mkLabel(`${s.n}<small>${s.s}</small>`, 'site'); });
 
 const SVGNS = 'http://www.w3.org/2000/svg';
+const specEl = $('.spec-strip');
 const callouts = $$('#callouts li').map(li => {
   const line = document.createElementNS(SVGNS, 'polyline');
   const dot = document.createElementNS(SVGNS, 'circle'); dot.setAttribute('r', 3.5);
@@ -829,6 +830,10 @@ function showPhoto(k, now) {
   mf.el.classList.remove('tick'); void mf.el.offsetWidth; if (!REDUCED) mf.el.classList.add('tick');
 }
 
+// outcomes photos
+const op = { imgs: $$('.out-photo .op-i'), cur: -1 };
+const OP_OUT = [.6, .72, .84, 1.3];   // photo 4 goes once the section has scrolled away
+
 // throughput calculator
 {
   const ids = ['hours', 'sess', 'fit', 'buf'];
@@ -838,6 +843,7 @@ function showPhoto(k, now) {
   const nf = new Intl.NumberFormat('en-GB');
   const calc = () => {
     const h = +inp.hours.value, s = +inp.sess.value, f = +inp.fit.value, b = +inp.buf.value;
+    ids.forEach(k => { const e = inp[k]; e.style.setProperty('--p', ((e.value - e.min) / (e.max - e.min) * 100).toFixed(1) + '%'); });
     out.hours.textContent = h + ' h'; out.sess.textContent = s + ' min'; out.fit.textContent = f + ' min'; out.buf.textContent = b + ' min';
     const slot = s + f + b, day = Math.floor(h * 60 / slot);
     $('#r-day').textContent = day;
@@ -975,11 +981,13 @@ function params(name, t, o = {}) {
       const a = lerp(-.25, 1.05, easeIO(t)), R = 3.5;
       const tx = mob ? 0 : .05;
       Object.assign(o, { cx: tx + Math.sin(a) * R, cy: 1.1 + Math.sin(t * Math.PI) * .25, cz: Math.cos(a) * R, tx, ty: mob ? 1.0 : .8, fov: 30,
-        explode: smooth(clamp((t - .04) / .32)), xray: clamp(t * 5) * .95, pool: .6, sx: mob ? 0 : .035, sy: mob ? 0 : .07 });
+        explode: smooth(clamp((t - .04) / .32)), xray: clamp(t * 5) * .95, pool: .6, sx: 0, sy: mob ? 0 : .07 });
       break;
     }
     case 'outcomes':
       Object.assign(o, { cx: -.7, cy: 2.0, cz: 5.3, tx: mob ? .5 : isMid() ? -.45 : .05, ty: mob ? .35 : .62, prints: 1, trail: .35, ghost: 0 });
+      // wide screens: the photo takes the right half, so the figure steps well back and walks small in the middle
+      if (!mob && !isMid()) { o.cx = o.tx + (o.cx - o.tx) * 2.2; o.cy = o.ty + (o.cy - o.ty) * 2.2; o.cz = o.tz + (o.cz - o.tz) * 2.2; o.sx = -.13; o.sy = -.09; }
       break;
     case 'clinic':
       Object.assign(o, { cx: 2.6, cy: 1.2, cz: 4.4, tx: 0, ty: .95, dim: .9, fig: 0, ghost: 0, trail: 0, grid: 0, pool: 0 });
@@ -1287,7 +1295,7 @@ function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
   const devOn = sec.name === 'device' ? clamp(cur.explode * 3) : 0;
   let curIdx = -1;
   callouts.forEach((co, i) => {
-    const on = devT > .08 + i * .15 && sec.name === 'device';
+    const on = devT > .1 + i * .188 && sec.name === 'device';
     co.li.classList.toggle('on', on);
     if (on) curIdx = i;
   });
@@ -1300,7 +1308,8 @@ function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
     anchors[co.anchor].getWorldPosition(_w);
     const [ax, ay] = toScreen(_w);
     const w = co.li.offsetWidth, h = co.li.offsetHeight, gap = 64;
-    const right = ax + gap + w <= W - 24;                 // flip to the left side near the edge
+    const edge = specEl.getBoundingClientRect().left - 24; // keep clear of the spec column
+    const right = ax + gap + w <= edge;                   // flip to the left side near the edge
     const bx = right ? ax + gap : ax - gap - w;
     const by = clamp(ay - 27, 84, H - h - 24);            // title row level with the part
     co.li.style.transform = `translate3d(${bx.toFixed(1)}px,${by.toFixed(1)}px,0)`;
@@ -1309,6 +1318,21 @@ function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
     co.dot.setAttribute('cx', ax); co.dot.setAttribute('cy', ay);
     co.halo.setAttribute('cx', ax); co.halo.setAttribute('cy', ay);
   });
+
+  // session photos build a cascade (in at 2%, 17%, 32%, 47% of the pinned section), hold, then leave in the
+  // same order (out at 60%, 72%, 84%). Photo 4 leaves only after the section has handed over, so on the way
+  // down it is never seen going; scrolling back up replays the whole sequence in reverse.
+  const os = sections.find(q => q.name === 'outcomes');
+  if (os && y > os.top - H && y < os.bottom + H) {
+    const ot = (y - os.top) / Math.max(1, os.holdEnd - os.top);   // unclamped: runs past 1 into the hand-over
+    const pk = ot < .02 ? -1 : Math.min(3, Math.floor((ot - .02) / .15));
+    op.imgs.forEach((im, i) => {
+      const on = i <= pk && ot < OP_OUT[i];
+      if (on !== im.classList.contains('on')) im.classList.toggle('on', on);
+      const age = String(Math.max(0, pk - i));
+      if (im.dataset.age !== age) { im.dataset.age = age; im.style.setProperty('--age', age); }
+    });
+  }
 
   // outcomes
   if (sec.name === 'outcomes') {
@@ -1333,6 +1357,16 @@ function resize() {
   globeMats[0].uniforms.uSize.value = 10 * DPR * (H / 900);
   measure();
 }
+// Q&A deck: a card taller than the viewport pins higher, so its bottom edge stays in view
+const deckMQ = matchMedia('(min-width: 1101px) and (min-height: 640px)');
+function deckTops() {
+  $$('#clinic .q').forEach((q, i) => {
+    q.style.top = deckMQ.matches ? Math.min(96 + i * 14, innerHeight - q.offsetHeight - 24) + 'px' : '';
+  });
+}
+addEventListener('resize', deckTops);
+document.fonts.ready.then(deckTops);
+addEventListener('load', deckTops);
 addEventListener('resize', resize);
 document.fonts.ready.then(measure);
 resize();

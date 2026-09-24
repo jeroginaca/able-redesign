@@ -190,10 +190,10 @@ body.hud-off .chapter { opacity: 0; }
 .rl-line.rl-words { display: block; white-space: normal; }
 .rl-words .wm { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .12em; margin-bottom: -.12em; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-/* gait card: a plain crossfade between steps (the letter roll stays on the hero captions) */
-.gait-panel .rl-line .ch { animation: none !important; }
-.gait-panel .rl-line.in { animation: rl-fade-in .45s ease .1s both; }
-.gait-panel .rl-line.out { animation: rl-fade-out .3s ease both; }
+/* gait card + session photos: a plain crossfade (the letter roll stays on the hero captions) */
+.gait-panel .rl-line .ch, .out-photo .rl-line .ch { animation: none !important; }
+.gait-panel .rl-line.in, .out-photo .rl-line.in { animation: rl-fade-in .45s ease .1s both; }
+.gait-panel .rl-line.out, .out-photo .rl-line.out { animation: rl-fade-out .3s ease both; }
 @keyframes rl-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rl-fade-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes ch-in-rev { from { transform: translateY(-105%) rotate(-6deg); opacity: 0; filter: blur(3px); } to { transform: none; opacity: 1; filter: none; } }
@@ -239,10 +239,12 @@ body.hud-off .chapter { opacity: 0; }
 .gait-note.mute { color: var(--ink-2); }
 
 /* ---------- 04 Device ---------- */
-#device { height: 740vh; }
-.device-copy { position: absolute; left: var(--gutter); top: 16vh; max-width: 460px; }
-.spec-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 24px; list-style: none; padding: 0; margin: 32px 0 0; }
-.spec-strip li { padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+#device { height: 610vh; }
+.device-copy { position: absolute; left: var(--gutter); top: 50%; transform: translateY(-50%); max-width: 460px; }
+.spec-strip { position: absolute; right: var(--gutter); top: 50%; transform: translateY(-50%); width: 150px; display: grid; gap: 20px; list-style: none; padding: 0; margin: 0; text-align: right; }
+.spec-strip li { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.spec-strip li + li { padding-top: 20px; }
+.spec-strip li + li::before { content: ""; position: absolute; top: 0; right: 0; width: 72px; height: 1px; background: var(--line-2); }
 .spec-strip b { font-family: var(--display); font-weight: 600; font-size: var(--fs-h5); line-height: 1.1; letter-spacing: -0.02em; white-space: nowrap; }
 .spec-strip small { font-family: var(--mono); font-size: var(--fs-xs); margin-left: 3px; color: var(--mute); }
 .spec-strip span { font-size: var(--fs-xs); text-transform: uppercase; color: var(--mute); }
@@ -277,7 +279,34 @@ body.hud-off .chapter { opacity: 0; }
 .metric b { display: block; font-family: var(--display); font-weight: 700; letter-spacing: -0.03em; font-size: var(--fs-h4); line-height: 1; font-variant-numeric: tabular-nums; }
 .metric b::after { content: "×"; font-size: .45em; color: var(--accent); margin-left: 4px; vertical-align: .6em; }
 .metric span { font-size: var(--fs-sm); color: var(--ink-2); }
-.out-cite { position: absolute; left: var(--gutter); bottom: 100px; max-width: 90ch; }
+.out-cite { position: absolute; left: var(--gutter); bottom: 48px; max-width: 90ch; }
+/* a patient's twelve sessions, in four photos: sized to fit between the counter and the metrics */
+/* session photos: a cascade that builds one photo at a time, each larger and further down-right.
+   Everything is in container-width units (cqw) so the stack keeps its shape at any size. */
+.out-photo { position: absolute; right: var(--gutter); top: 88px; width: min(55vw, calc((100vh - 300px) / .658), 1200px); aspect-ratio: 1 / .658; margin: 0; container-type: inline-size; pointer-events: none; }
+.op-i { position: absolute; aspect-ratio: 4 / 3; overflow: hidden; background: var(--op-bg, #fff); border-radius: .25rem; box-shadow: 0 8px 20px -14px rgba(33, 25, 60, 0);
+  clip-path: inset(100% -40px 0 -40px); transform: translateY(4cqw) scale(1.04); opacity: .6;
+  transition: clip-path 1.1s cubic-bezier(.65, 0, .35, 1), transform 1.4s cubic-bezier(.2, .7, .1, 1), opacity 1.1s ease, box-shadow .2s; }
+/* the shadow only fades in once the wipe has finished, so the mask never crops it */
+/* each newer photo dims the older ones by another 22% (--age = how many photos arrived after it);
+   only the image fades, over a solid card, so older photos wash to white instead of showing the layers below */
+.op-i img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: max(.08, 1 - var(--age, 0) * .22); transition: opacity 1.1s ease; }
+.op-i.on { clip-path: inset(-40px); transform: none; opacity: 1; box-shadow: 0 8px 20px -14px rgba(33, 25, 60, .22);
+  transition: clip-path 1.1s cubic-bezier(.65, 0, .35, 1), transform 1.4s cubic-bezier(.2, .7, .1, 1), opacity 1.1s ease, box-shadow .6s ease 1s; }
+.op-i:nth-child(1) { left: 0; top: 0; width: 23.8cqw; }
+.op-i:nth-child(2) { left: 14cqw; top: 5.6cqw; width: 30.5cqw; }
+.op-i:nth-child(3) { left: 29.2cqw; top: 15.4cqw; width: 39.7cqw; }
+.op-i:nth-child(4) { left: 45.6cqw; top: 25cqw; width: 54.4cqw; }
+@media (max-height: 640px), (max-width: 1100px) { .out-photo { display: none; } }
+/* wide screens: text column left, tiny figure in the middle, big photo right, metrics along the bottom */
+@media (min-width: 1101px) {
+  .out-session { right: auto; left: var(--gutter); top: calc(16vh + 260px); text-align: left; }
+  .out-session > :not(.out-sched) { display: none; }
+  .out-sched { font-size: var(--fs-sm); color: var(--ink-2); }
+  .out-ticks { justify-content: flex-start; }
+  .out-metrics { bottom: 40px; }
+  .out-cite { bottom: 150px; max-width: min(90ch, 36vw); }
+}
 
 /* ---------- 06 Clinic ---------- */
 .flow { padding: 22vh 0 18vh; }
@@ -370,6 +399,7 @@ body.review .tbc::before { content: attr(data-note); position: absolute; top: -2
   .mf-photos { display: none; }
 
   .gait-intro, .device-copy, .out-head, .net-copy { top: 88px; right: var(--gutter); max-width: 640px; }
+  .device-copy { transform: none; }
   .gait-intro .body, .device-copy .body { display: none; }
   .gait-panel { left: var(--gutter); right: var(--gutter); width: auto; top: auto; bottom: 16px; transform: none; padding: 16px; max-width: 640px; }
   .gp-desc { display: none; }
@@ -379,7 +409,10 @@ body.review .tbc::before { content: attr(data-note); position: absolute; top: -2
   .callout-list { left: var(--gutter); right: var(--gutter); width: auto; top: auto; bottom: 16px; transform: none; gap: 10px; max-width: 640px; }
   .callout-list li { display: none; position: static; width: auto; opacity: 1; transform: none !important; }
   .callout-list li.cur { display: grid; background: var(--glass); border: 1px solid var(--line); border-radius: 8px; padding: 14px; backdrop-filter: blur(14px); }
-  .spec-strip { display: flex; margin-top: 14px; gap: 8px; flex-wrap: wrap; }
+  .spec-strip { left: var(--gutter); right: var(--gutter); top: auto; bottom: 150px; transform: none; width: auto; display: flex; gap: 8px; flex-wrap: wrap; text-align: left; }
+  .spec-strip li { align-items: flex-start; }
+  .spec-strip li + li { padding-top: 8px; }
+  .spec-strip li + li::before { display: none; }
   .spec-strip li { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--glass); backdrop-filter: blur(10px); }
   .spec-strip b { font-size: var(--fs-md); letter-spacing: -0.02em; }
   .spec-strip small { font-size: .625rem; }
@@ -392,6 +425,7 @@ body.review .tbc::before { content: attr(data-note); position: absolute; top: -2
   .out-ticks { margin: 0; flex: 1; justify-content: flex-start; }
   .out-metrics { bottom: 24px; gap: 14px; }
   .out-cite { display: none; }
+  .out-photo { display: none; }
 
   .net-copy { transform: none; }
   .sites { margin: 16px 0; }
@@ -443,6 +477,7 @@ body.review .tbc::before { content: attr(data-note); position: absolute; top: -2
   .grain { animation: none; }
   .reveal { transition: none; opacity: 1; transform: none; }
   .mf-frame img { transition: none; transform: none; }
+  .op-i { transition: opacity .3s; transform: none; }
   .rl-line .ch { animation: none !important; }
 }
 
@@ -516,8 +551,114 @@ body.nav-light .logo-mark { border-color: var(--indigo); }
 [data-theme="light"] .dot, [data-theme="light"] .logo-mark::after { box-shadow: none; }
 [data-theme="light"] .out-ticks i.on { box-shadow: none; }
 [data-theme="light"] .pill { border-color: rgba(29,160,153,.5); color: #1da099; }
+
+/* ---------- For clinics: editorial index ---------- */
+#clinic .qa { display: block; border-bottom: 1px solid rgba(33,25,60,.14); }
+#clinic .q { position: relative; display: grid; grid-template-columns: 7.5rem minmax(0, 5fr) minmax(0, 6fr); column-gap: 48px; align-items: start;
+  padding: 64px 0; background: none; border: 0; border-top: 1px solid rgba(33,25,60,.14); border-radius: 0; box-shadow: none; }
+#clinic .q::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 1px; background: var(--teal); transform: scaleX(0); transform-origin: left; transition: transform .9s var(--ease); }
+#clinic .q:hover::before { transform: scaleX(1); }
+#clinic .q-n { font-family: var(--display); font-weight: 300; font-size: var(--fs-h2); line-height: .85; letter-spacing: -0.05em; color: rgba(29,160,153,.35); transition: color .6s var(--ease); font-variant-numeric: tabular-nums; }
+#clinic .q:hover .q-n { color: var(--teal); }
+#clinic .q h3 { font-family: var(--display); font-weight: 500; font-size: var(--fs-h4); line-height: 1.04; letter-spacing: -0.035em; color: var(--indigo); max-width: 16ch; }
+#clinic .q-body { display: flex; flex-direction: column; gap: 22px; padding-top: 6px; }
+#clinic .q-a { font-size: var(--fs-sub); line-height: 1.3; font-weight: 500; letter-spacing: -0.02em; color: var(--indigo); max-width: 30ch; }
+#clinic .q .body-s { max-width: 52ch; }
+
+/* stacking deck: each question pins under the nav and the next one slides over it */
+#clinic { --cbg: #f4f8f9; }
+[data-theme="light"] #clinic { --cbg: #e6f2f2; }
+:root:not([data-theme="light"]) .out-photo { --op-bg: var(--bg); }
+@media (min-width: 1101px) and (min-height: 640px) {
+  #clinic .q { position: sticky; top: calc(96px + var(--k) * 14px); min-height: 68vh; background: var(--cbg); box-shadow: 0 -18px 36px -28px rgba(33,25,60,.08); }
+  #clinic .q:nth-child(1) { --k: 0; } #clinic .q:nth-child(2) { --k: 1; } #clinic .q:nth-child(3) { --k: 2; }
+  #clinic .q:nth-child(4) { --k: 3; } #clinic .q:nth-child(5) { --k: 4; } #clinic .q:nth-child(6) { --k: 5; }
+  #clinic .q-calc { min-height: 0; }
+}
+
+/* wide screens: the heading stays pinned on the left while the question deck stacks on the right */
+@media (min-width: 1101px) {
+  #clinic .wrap { max-width: 1760px; display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); column-gap: clamp(40px, 5vw, 96px); align-items: start; }
+  #clinic .clinic-head { position: sticky; top: 120px; margin-bottom: 0; }
+}
+
+/* key/value facts as hairline rows */
+#clinic .kv { grid-template-columns: max-content 1fr; gap: 0 32px; margin: 0; }
+#clinic .kv dt, #clinic .kv dd { padding: 12px 0; border-top: 1px solid rgba(33,25,60,.1); }
+#clinic .kv dt { color: #6f7a94; }
+
+/* evidence as a list of papers */
+
+#clinic .refs { display: block; margin: 0; }
+#clinic .refs li + li { border-top: 0; }
+#clinic .refs a { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "meta arrow" "title arrow" "small arrow"; gap: 4px 24px; padding: 18px 0; border: 0; border-top: 1px solid rgba(33,25,60,.1); border-radius: 0; background: none; color: var(--indigo); }
+#clinic .refs li:last-child a { border-bottom: 1px solid rgba(33,25,60,.1); }
+#clinic .refs a::after { content: "↗"; grid-area: arrow; align-self: center; font-size: var(--fs-lg); color: var(--teal); transition: transform .5s var(--ease); }
+#clinic .refs a:hover { background: none; }
+#clinic .refs a:hover::after { transform: translate(4px, -4px); }
+#clinic .refs a:hover b { color: var(--teal); }
+#clinic .refs span { grid-area: meta; }
+#clinic .refs b { grid-area: title; font-size: var(--fs-lg); letter-spacing: -0.015em; transition: color .4s; }
+#clinic .refs small { grid-area: small; }
+#clinic .link { margin-top: 0; }
+
+/* throughput calculator: a dark instrument panel */
+#clinic .q-calc { background: var(--cbg); border-top-color: rgba(33,25,60,.14); }
+#clinic .q-calc .q-body { display: contents; }
+#clinic .q-calc .q-a { grid-column: 3; grid-row: 1; padding-top: 6px; }
+#clinic .q-calc .calc { grid-column: 2 / -1; grid-row: 2; margin-top: 48px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0;
+  background: var(--indigo); color: #f4f6f8; border-radius: 8px; overflow: hidden; }
+#clinic .q-calc .q-body > .mono.tiny { grid-column: 2 / -1; grid-row: 3; margin-top: 14px; }
+#clinic .calc-in { padding: 40px; gap: 36px 40px; }
+#clinic .calc-in label { color: #c8d5dc; }
+#clinic .calc-in output { color: #f4f6f8; }
+#clinic .calc-in input { -webkit-appearance: none; appearance: none; height: 20px; background: transparent; cursor: grab; }
+#clinic .calc-in input::-webkit-slider-runnable-track { height: 2px; background: linear-gradient(to right, var(--accent) var(--p, 50%), rgba(200,213,220,.22) var(--p, 50%)); }
+#clinic .calc-in input::-moz-range-track { height: 2px; background: linear-gradient(to right, var(--accent) var(--p, 50%), rgba(200,213,220,.22) var(--p, 50%)); }
+#clinic .calc-in input::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -7px; border-radius: 50%; background: #f4f6f8; box-shadow: 0 0 0 5px rgba(176,202,98,.28); transition: box-shadow .3s; }
+#clinic .calc-in input::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: #f4f6f8; box-shadow: 0 0 0 5px rgba(176,202,98,.28); }
+#clinic .calc-in input:active::-webkit-slider-thumb { box-shadow: 0 0 0 9px rgba(176,202,98,.32); }
+#clinic .calc-out { padding: 40px; border-left: 1px solid rgba(200,213,220,.14); background: rgba(255,255,255,.03); }
+#clinic .calc-out .big b { color: var(--accent); font-size: var(--fs-h1); }
+#clinic .calc-out span { color: #c8d5dc; }
+#clinic .calc-out .row { border-color: rgba(200,213,220,.14); }
+#clinic .calc-out .row b { color: #f4f6f8; }
+#clinic .bar i { background: rgba(200,213,220,.12); }
+#clinic .bar i b { background: var(--accent); }
+#clinic .bar i s { background: var(--teal); }
+
+@media (max-width: 1100px) {
+  #clinic .q { grid-template-columns: 5rem minmax(0, 1fr); row-gap: 20px; column-gap: 28px; padding: 48px 0; }
+  #clinic .q-body, #clinic .q-calc .q-a { grid-column: 2; }
+  #clinic .q-calc .q-a { grid-row: auto; }
+  #clinic .q h3, #clinic .q-wide h3 { max-width: none; }
+  #clinic .q-calc .calc, #clinic .q-calc .q-body > .mono.tiny { grid-column: 1 / -1; grid-row: auto; }
+  #clinic .q-calc .calc { margin-top: 12px; }
+}
+@media (max-width: 760px) {
+  #clinic .q { grid-template-columns: 1fr; padding: 40px 0; }
+  #clinic .q-n { font-size: var(--fs-h4); }
+  #clinic .q-body, #clinic .q-calc .q-a { grid-column: 1; }
+  #clinic .q-calc .calc { grid-template-columns: 1fr; }
+  #clinic .calc-in { grid-template-columns: 1fr; }
+  #clinic .calc-in, #clinic .calc-out { padding: 24px; }
+  #clinic .calc-out { border-left: 0; border-top: 1px solid rgba(200,213,220,.14); }
+}
+/* narrower desktops: the right column is too tight for three columns, so each answer sits under its question */
+@media (min-width: 1101px) and (max-width: 1599px) {
+  #clinic .q { grid-template-columns: 5rem minmax(0, 1fr); row-gap: 20px; column-gap: 28px; }
+  #clinic .q-body, #clinic .q-calc .q-a { grid-column: 2; }
+  #clinic .q-calc .q-a { grid-row: auto; }
+  #clinic .q h3 { max-width: none; }
+  #clinic .q-n { font-size: var(--fs-h4); }
+  #clinic .q-calc .calc, #clinic .q-calc .q-body > .mono.tiny { grid-column: 1 / -1; grid-row: auto; }
+  #clinic .q-calc .calc { margin-top: 12px; }
+}
+/* Q3: no lead line; the long question runs the full card width so the calculator sits higher */
+#clinic .q-calc h3 { grid-column: 2 / -1; max-width: 24ch; }
+#clinic .q-calc .calc { margin-top: 32px; }
+@media (max-width: 760px) { #clinic .q-calc h3 { grid-column: 1; } }
 [data-theme="light"] #clinic { background: #e6f2f2; }
-[data-theme="light"] #clinic .q-calc { background: #d3ebea; }
 [data-theme="light"] .cta-card { background: #21193c; border-color: #21193c; color: #f4f6f8; }
 [data-theme="light"] .cta-card .h2, [data-theme="light"] .cta-card .body { color: #f4f6f8; }
 [data-theme="light"] .cta-card .h2 em { color: #c8d5dc; }
@@ -725,14 +866,14 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
         <p class="mono label">04 The device</p>
         <h2 class="h2">Built for the gym floor,<br><em>not the showroom.</em></h2>
         <p class="body">Everything a therapist needs to get a patient standing, and nothing to wrestle with between sessions.</p>
-        <ul class="spec-strip mono">
-          <li><b>9.8<small>kg</small></b><span>Device weight</span></li>
-          <li><b>150–190<small>cm</small></b><span>User height</span></li>
-          <li><b>≤100<small>kg</small></b><span>User weight</span></li>
-          <li><b>C5–L5</b><span>Injury levels</span></li>
-          <li><b>&lt;7<small>min</small></b><span>To fit</span></li>
-        </ul>
       </div>
+      <ul class="spec-strip mono">
+        <li><b>9.8<small>kg</small></b><span>Device weight</span></li>
+        <li><b>150–190<small>cm</small></b><span>User height</span></li>
+        <li><b>≤100<small>kg</small></b><span>User weight</span></li>
+        <li><b>C5–L5</b><span>Injury levels</span></li>
+        <li><b>&lt;7<small>min</small></b><span>To fit</span></li>
+      </ul>
       <ol class="callout-list" id="callouts">
         <li data-anchor="knee"><span class="mono">01</span><div><h3>Powered knee</h3><p>A motorised joint drives knee flexion and extension through the step.</p></div></li>
         <li data-anchor="hip"><span class="mono">02</span><div><h3>Passive hip</h3><p>The hip joint is unpowered, so the pelvis moves naturally and the device stays light.</p></div></li>
@@ -754,8 +895,14 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
         <p class="mono tiny mute">Training session</p>
         <p class="out-num"><span id="sess-n">01</span><small>/12</small></p>
         <div class="out-ticks" id="sess-ticks"></div>
-        <p class="mono tiny mute">4 weeks · 3 sessions a week · n = 24</p>
+        <p class="mono tiny mute out-sched">4 weeks · 3 sessions a week</p>
       </div>
+      <figure class="out-photo" aria-label="A patient's sessions: first steps, fitting, crutches, walking out">
+        <div class="op-i"><img src="assets/img/session-walker.jpg" alt="A woman walking outdoors in the ABLE exoskeleton with a walker, her therapist beside her" decoding="async"></div>
+        <div class="op-i"><img src="assets/img/session-fit.jpg" alt="Two therapists fitting the ABLE exoskeleton on a patient standing at a walker" decoding="async"></div>
+        <div class="op-i"><img src="assets/img/session-crutches.jpg" alt="A patient walking in the ABLE exoskeleton with forearm crutches" decoding="async"></div>
+        <div class="op-i"><img src="assets/img/session-highfive.jpg" alt="A patient in the ABLE exoskeleton high-fiving his therapist" decoding="async"></div>
+      </figure>
       <div class="out-metrics">
         <div class="metric"><b data-to="2.6">1.0</b><span>× walking time per session</span></div>
         <div class="metric"><b data-to="3.0">1.0</b><span>× steps per session</span></div>
@@ -777,8 +924,9 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
 
       <div class="qa">
         <article class="q reveal" id="q-ce">
-          <p class="q-n mono">Q1</p>
+          <p class="q-n">01</p>
           <h3>Is it CE marked?</h3>
+          <div class="q-body">
           <p class="q-a"><em>Yes, under the EU Medical Device Regulation.</em></p>
           <dl class="kv mono">
             <dt>Certificate</dt><dd>CE 2797 · MDR 2017/745</dd>
@@ -787,11 +935,13 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
             <dt>Setting</dt><dd>Rehab institutions, supervised by a trained therapist</dd>
             <dt>Requirement</dt><dd>Elbow extensors ≥ 4/5, both arms</dd>
           </dl>
+          </div>
         </article>
 
         <article class="q q-wide reveal" id="q-evidence">
-          <p class="q-n mono">Q2</p>
+          <p class="q-n">02</p>
           <h3>What is the clinical evidence?</h3>
+          <div class="q-body">
           <p class="q-a"><em>Peer-reviewed, multicentre, registered trials.</em></p>
           <ul class="refs">
             <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10091314/" target="_blank" rel="noopener"><span class="mono">2023 · J NeuroEng Rehabil</span><b>Multicentre safety, feasibility &amp; usability</b><small>n = 24 · Institut Guttmann (ES), Heidelberg Univ. Hospital (DE) · 12 sessions</small></a></li>
@@ -799,12 +949,13 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
             <li><a href="https://www.tandfonline.com/doi/abs/10.1080/09638288.2025.2496351" target="_blank" rel="noopener"><span class="mono">2025 · Disability &amp; Rehabilitation</span><b>Co-creation with clinicians and patients</b><small>Pilot study and comparative analysis</small></a></li>
           </ul>
           <p class="mono tiny mute trials">Registered: <a href="https://clinicaltrials.gov/study/NCT04876794" target="_blank" rel="noopener">NCT04876794</a> · <a href="https://clinicaltrials.gov/study/NCT05590065" target="_blank" rel="noopener">NCT05590065</a> · <a href="https://clinicaltrials.gov/study/NCT05643313" target="_blank" rel="noopener">NCT05643313</a> · <a href="https://clinicaltrials.gov/study/NCT07062575" target="_blank" rel="noopener">NCT07062575</a></p>
+          </div>
         </article>
 
         <article class="q q-calc reveal" id="q-throughput">
-          <p class="q-n mono">Q3</p>
+          <p class="q-n">03</p>
           <h3>How many patients a day can I run through it?</h3>
-          <p class="q-a"><em>Set your own schedule and see.</em></p>
+          <div class="q-body">
           <div class="calc">
             <div class="calc-in">
               <label><span>Gym hours per day</span><output id="o-hours">8 h</output><input type="range" id="c-hours" min="4" max="12" step="0.5" value="8"></label>
@@ -820,19 +971,23 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
             </div>
           </div>
           <p class="mono tiny mute">Estimate only. The fit time default (7 min) comes from the multicentre trial mean of 6:50 ± 2:50.</p>
+          </div>
         </article>
 
         <article class="q reveal" id="q-reimb">
-          <p class="q-n mono">Q4</p>
+          <p class="q-n">04</p>
           <h3>What's the reimbursement situation?</h3>
+          <div class="q-body">
           <p class="q-a"><em>It depends on your country, and we'll map it for you.</em></p>
           <p class="body-s tbc" data-note="Needs ABLE input: per-market codes and payer precedents">Reimbursement for robotic gait training varies by country, payer and care setting. Before you buy, our market access team prepares a dossier for your committee covering the applicable codes, payer precedents and a budget-impact case.</p>
           <a class="link mono" href="#contact">Request your market dossier →</a>
+          </div>
         </article>
 
         <article class="q reveal" id="q-staff">
-          <p class="q-n mono">Q5</p>
+          <p class="q-n">05</p>
           <h3>How long does my staff take to learn it?</h3>
+          <div class="q-body">
           <p class="q-a"><em>Therapists rate it highly. The best-rated attributes are weight, durability and size.</em></p>
           <dl class="kv mono">
             <dt>Therapist satisfaction</dt><dd>31.6 / 40 · QUEST 2.0 · 11 therapists</dd>
@@ -840,14 +995,17 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
             <dt>Fitting time</dt><dd>6:50 ± 2:50 min (trial mean)</dd>
             <dt class="tbc" data-note="Needs ABLE input: onboarding length and format">Onboarding</dt><dd class="tbc" data-note="Needs ABLE input">On-site certification programme, run by ABLE clinical specialists</dd>
           </dl>
+          </div>
         </article>
 
         <article class="q reveal" id="q-who">
-          <p class="q-n mono">Q6</p>
+          <p class="q-n">06</p>
           <h3>Who in my country already uses it?</h3>
+          <div class="q-body">
           <p class="q-a"><em>Neurorehab hospitals in Spain, Germany, the Netherlands and the UK.</em></p>
           <p class="body-s">Clinical validation has run in all four countries, at hospitals including Institut Guttmann and Heidelberg University Hospital. We'll put you in touch with a reference clinic near you.</p>
           <a class="link mono" href="#network">See the network ↓</a>
+          </div>
         </article>
       </div>
     </div>
@@ -1703,6 +1861,7 @@ const kneeLbl = mkLabel('Knee <b>0°</b>'), hipLbl = mkLabel('Hip <b>0°</b>');
 SITES.forEach(s => { if (s.label) s.el = mkLabel(`${s.n}<small>${s.s}</small>`, 'site'); });
 
 const SVGNS = 'http://www.w3.org/2000/svg';
+const specEl = $('.spec-strip');
 const callouts = $$('#callouts li').map(li => {
   const line = document.createElementNS(SVGNS, 'polyline');
   const dot = document.createElementNS(SVGNS, 'circle'); dot.setAttribute('r', 3.5);
@@ -1785,6 +1944,10 @@ function showPhoto(k, now) {
   mf.el.classList.remove('tick'); void mf.el.offsetWidth; if (!REDUCED) mf.el.classList.add('tick');
 }
 
+// outcomes photos
+const op = { imgs: $$('.out-photo .op-i'), cur: -1 };
+const OP_OUT = [.6, .72, .84, 1.3];   // photo 4 goes once the section has scrolled away
+
 // throughput calculator
 {
   const ids = ['hours', 'sess', 'fit', 'buf'];
@@ -1794,6 +1957,7 @@ function showPhoto(k, now) {
   const nf = new Intl.NumberFormat('en-GB');
   const calc = () => {
     const h = +inp.hours.value, s = +inp.sess.value, f = +inp.fit.value, b = +inp.buf.value;
+    ids.forEach(k => { const e = inp[k]; e.style.setProperty('--p', ((e.value - e.min) / (e.max - e.min) * 100).toFixed(1) + '%'); });
     out.hours.textContent = h + ' h'; out.sess.textContent = s + ' min'; out.fit.textContent = f + ' min'; out.buf.textContent = b + ' min';
     const slot = s + f + b, day = Math.floor(h * 60 / slot);
     $('#r-day').textContent = day;
@@ -1931,11 +2095,13 @@ function params(name, t, o = {}) {
       const a = lerp(-.25, 1.05, easeIO(t)), R = 3.5;
       const tx = mob ? 0 : .05;
       Object.assign(o, { cx: tx + Math.sin(a) * R, cy: 1.1 + Math.sin(t * Math.PI) * .25, cz: Math.cos(a) * R, tx, ty: mob ? 1.0 : .8, fov: 30,
-        explode: smooth(clamp((t - .04) / .32)), xray: clamp(t * 5) * .95, pool: .6, sx: mob ? 0 : .035, sy: mob ? 0 : .07 });
+        explode: smooth(clamp((t - .04) / .32)), xray: clamp(t * 5) * .95, pool: .6, sx: 0, sy: mob ? 0 : .07 });
       break;
     }
     case 'outcomes':
       Object.assign(o, { cx: -.7, cy: 2.0, cz: 5.3, tx: mob ? .5 : isMid() ? -.45 : .05, ty: mob ? .35 : .62, prints: 1, trail: .35, ghost: 0 });
+      // wide screens: the photo takes the right half, so the figure steps well back and walks small in the middle
+      if (!mob && !isMid()) { o.cx = o.tx + (o.cx - o.tx) * 2.2; o.cy = o.ty + (o.cy - o.ty) * 2.2; o.cz = o.tz + (o.cz - o.tz) * 2.2; o.sx = -.13; o.sy = -.09; }
       break;
     case 'clinic':
       Object.assign(o, { cx: 2.6, cy: 1.2, cz: 4.4, tx: 0, ty: .95, dim: .9, fig: 0, ghost: 0, trail: 0, grid: 0, pool: 0 });
@@ -2243,7 +2409,7 @@ function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
   const devOn = sec.name === 'device' ? clamp(cur.explode * 3) : 0;
   let curIdx = -1;
   callouts.forEach((co, i) => {
-    const on = devT > .08 + i * .15 && sec.name === 'device';
+    const on = devT > .1 + i * .188 && sec.name === 'device';
     co.li.classList.toggle('on', on);
     if (on) curIdx = i;
   });
@@ -2256,7 +2422,8 @@ function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
     anchors[co.anchor].getWorldPosition(_w);
     const [ax, ay] = toScreen(_w);
     const w = co.li.offsetWidth, h = co.li.offsetHeight, gap = 64;
-    const right = ax + gap + w <= W - 24;                 // flip to the left side near the edge
+    const edge = specEl.getBoundingClientRect().left - 24; // keep clear of the spec column
+    const right = ax + gap + w <= edge;                   // flip to the left side near the edge
     const bx = right ? ax + gap : ax - gap - w;
     const by = clamp(ay - 27, 84, H - h - 24);            // title row level with the part
     co.li.style.transform = `translate3d(${bx.toFixed(1)}px,${by.toFixed(1)}px,0)`;
@@ -2265,6 +2432,21 @@ function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
     co.dot.setAttribute('cx', ax); co.dot.setAttribute('cy', ay);
     co.halo.setAttribute('cx', ax); co.halo.setAttribute('cy', ay);
   });
+
+  // session photos build a cascade (in at 2%, 17%, 32%, 47% of the pinned section), hold, then leave in the
+  // same order (out at 60%, 72%, 84%). Photo 4 leaves only after the section has handed over, so on the way
+  // down it is never seen going; scrolling back up replays the whole sequence in reverse.
+  const os = sections.find(q => q.name === 'outcomes');
+  if (os && y > os.top - H && y < os.bottom + H) {
+    const ot = (y - os.top) / Math.max(1, os.holdEnd - os.top);   // unclamped: runs past 1 into the hand-over
+    const pk = ot < .02 ? -1 : Math.min(3, Math.floor((ot - .02) / .15));
+    op.imgs.forEach((im, i) => {
+      const on = i <= pk && ot < OP_OUT[i];
+      if (on !== im.classList.contains('on')) im.classList.toggle('on', on);
+      const age = String(Math.max(0, pk - i));
+      if (im.dataset.age !== age) { im.dataset.age = age; im.style.setProperty('--age', age); }
+    });
+  }
 
   // outcomes
   if (sec.name === 'outcomes') {
@@ -2289,6 +2471,16 @@ function resize() {
   globeMats[0].uniforms.uSize.value = 10 * DPR * (H / 900);
   measure();
 }
+// Q&A deck: a card taller than the viewport pins higher, so its bottom edge stays in view
+const deckMQ = matchMedia('(min-width: 1101px) and (min-height: 640px)');
+function deckTops() {
+  $$('#clinic .q').forEach((q, i) => {
+    q.style.top = deckMQ.matches ? Math.min(96 + i * 14, innerHeight - q.offsetHeight - 24) + 'px' : '';
+  });
+}
+addEventListener('resize', deckTops);
+document.fonts.ready.then(deckTops);
+addEventListener('load', deckTops);
 addEventListener('resize', resize);
 document.fonts.ready.then(measure);
 resize();
