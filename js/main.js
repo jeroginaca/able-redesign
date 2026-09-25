@@ -961,6 +961,8 @@ function params(name, t, o = {}) {
   switch (name) {
     case 'hero':
       Object.assign(o, { cx: 3.9, cy: 1.4, cz: 5.4, tx: mob ? -.55 : -.95, ty: mob ? .95 : .92, ghost: 1, trail: 1 });
+      // phones: a little smaller, centred and low in the frame, clear of the text above
+      if (mob) { o.cx = o.tx + (o.cx - o.tx) * 1.15; o.cy = o.ty + (o.cy - o.ty) * 1.15; o.cz = o.tz + (o.cz - o.tz) * 1.15; o.sx = -.19; o.sy = -.25; }
       break;
     case 'manifesto': {
       const e = smooth(t);

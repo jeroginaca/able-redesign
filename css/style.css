@@ -366,7 +366,9 @@ body.review .tbc::before { content: attr(data-note); position: absolute; top: -2
    Heading on top, the 3D figure in the middle, the data card docked at the bottom. */
 @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
   .hero-foot > span:first-child { display: none; }
-  #hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to right, color-mix(in srgb, var(--bg) 88%, transparent) 0%, color-mix(in srgb, var(--bg) 55%, transparent) 60%, transparent 100%); pointer-events: none; }
+  /* text sits at the top, the figure walks in the space below it */
+  #hero { justify-content: flex-start; padding-top: 96px; }
+  #hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, color-mix(in srgb, var(--bg) 88%, transparent) 0%, color-mix(in srgb, var(--bg) 55%, transparent) 55%, transparent 75%); pointer-events: none; }
   .hero-copy { position: relative; }
   .stage .sticky::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 46%; z-index: 0; pointer-events: none; background: linear-gradient(to bottom, color-mix(in srgb, var(--bg) 92%, transparent) 0%, color-mix(in srgb, var(--bg) 70%, transparent) 55%, transparent 100%); }
   .sticky > * { z-index: 1; }
