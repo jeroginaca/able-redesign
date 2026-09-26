@@ -3,8 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ABLE Exoskeleton</title>
-<meta name="description" content="ABLE is a 9.8 kg knee-powered exoskeleton, CE-marked under EU MDR, that gets people with spinal cord injury standing and walking in clinic.">
+<title>ABLE Exoskeleton · Concept redesign by Jero Ginaca</title>
+<meta name="description" content="An unofficial, scroll-directed 3D concept redesign for the ABLE exoskeleton, designed and built by Jero Ginaca. Not affiliated with ABLE Human Motion.">
+<meta name="author" content="Jerónimo Ginaca">
+<!-- Unofficial concept: keep it out of search results so it never competes with the real brand -->
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://jeroginaca.github.io/able-redesign/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jeroginaca.github.io/able-redesign/">
+<meta property="og:title" content="ABLE · Movement is the product (concept redesign)">
+<meta property="og:description" content="A scroll-directed three.js concept for the ABLE exoskeleton: a live chronophotograph, a gait lab you scroll through, and an x-ray device view. Designed and built by Jero Ginaca.">
+<meta property="og:image" content="https://jeroginaca.github.io/able-redesign/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ABLE concept redesign: Movement is the product">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#120d24">
 <script>(function(){var t;try{t=new URLSearchParams(location.search).get('theme')||sessionStorage.getItem('able-theme');}catch(e){}document.documentElement.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -422,6 +436,19 @@ body.review .tbc::before { content: attr(data-note); position: absolute; top: -2
   .sites li { padding: 8px 0; }
 }
 
+/* Landscape tablets / small laptop windows: the exploded device needs the room,
+   so its heading moves up and the part card docks bottom-left (matches isMid() in main.js) */
+@media (min-width: 761px) and (max-width: 1100px) and (orientation: landscape) {
+  .device-copy { top: 96px; transform: none; max-width: 360px; }
+  .device-copy .h2 { font-size: var(--fs-h3); }
+  .device-copy .body { display: none; }
+  .callout-list { left: var(--gutter); top: auto; bottom: 24px; width: 340px; height: auto; }
+  .callout-list li { display: none; position: static; width: auto; opacity: 1; transform: none !important; }
+  .callout-list li.cur { display: grid; }
+  #leaders { display: none; }
+  .gp-foot { flex-direction: column; gap: 8px; }
+  .gp-desc { text-align: left; min-height: 0; }
+}
 /* Phones only */
 @media (max-width: 760px) {
   :root { --fs-h1: 3.5rem; --fs-h2: 2.75rem; --fs-h3: 2.25rem; --fs-h4: 2rem; --fs-h5: 1.25rem; --fs-sub: 1.25rem; --fs-lg: 1.125rem; }
@@ -719,6 +746,34 @@ body.nav-onfoot .lang { color: #8a93ad; }
 body.nav-onfoot .logo-mark { border-color: #f4f6f8; }
 body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
 
+/* ---------- Concept framing (portfolio) ---------- */
+.nav-brand { display: flex; align-items: center; gap: 14px; }
+.concept-tag { font-size: .625rem; text-transform: uppercase; letter-spacing: .12em; color: var(--accent-soft); background: none; border: 1px solid rgba(176,202,98,.45); border-radius: 999px; padding: 4px 9px; cursor: pointer; transition: background .3s, color .3s; }
+.concept-tag:hover { background: rgba(176,202,98,.14); }
+body.nav-light .concept-tag { color: var(--indigo); border-color: rgba(33,25,60,.35); }
+.loader-credit { margin: 28px 0 0; font-size: var(--fs-xs); color: var(--mute); text-transform: uppercase; letter-spacing: .08em; }
+button.btn { cursor: pointer; font-family: var(--sans); }
+.foot-link { font: inherit; font-size: var(--fs-sm); color: #c8d5dc; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+.foot-link:hover { color: #fff; }
+.foot-bottom span > a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+
+.concept { width: min(620px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 40px; color: var(--ink); background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: 0 40px 120px -30px rgba(0,0,0,.6); }
+.concept::backdrop { background: rgba(10, 8, 22, .6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.concept[open] { animation: concept-in .45s var(--ease) both; }
+@keyframes concept-in { from { opacity: 0; transform: translateY(16px); } }
+.concept .h2 { font-size: var(--fs-h4); margin: 0 0 18px; }
+.concept .body { margin: 0 0 14px; }
+.concept .body-s { margin: 0 0 22px; }
+.concept .kv { margin-bottom: 28px; }
+.concept-x { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-2); background: none; color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; }
+.concept-x:hover { background: var(--line); }
+@media (max-width: 760px) {
+  .concept { padding: 28px 22px; }
+  .concept .cta-row .btn { width: 100%; justify-content: center; }
+}
+@media (max-width: 380px) { .concept-tag { display: none; } }
+@media (prefers-reduced-motion: reduce) { .concept[open] { animation: none; } }
+
 </style>
 <script type="importmap">
 { "imports": {
@@ -740,14 +795,18 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
     <div class="loader-word">ABLE</div>
     <div class="loader-track"><span id="loader-bar"></span></div>
     <div class="loader-meta mono"><span>Calibrating gait model</span><span id="loader-pct">0%</span></div>
+    <p class="loader-credit mono">Unofficial concept redesign by Jero Ginaca</p>
   </div>
 </div>
 
 <!-- Navigation -->
 <header class="nav">
-  <a href="#top" class="logo" aria-label="ABLE Human Motion, home">
-    <span class="logo-mark"></span><span class="logo-word">ABLE</span>
-  </a>
+  <div class="nav-brand">
+    <a href="#top" class="logo" aria-label="ABLE concept, back to top">
+      <span class="logo-mark"></span><span class="logo-word">ABLE</span>
+    </a>
+    <button class="concept-tag mono" type="button" data-concept aria-label="About this concept redesign">Concept</button>
+  </div>
   <nav class="nav-links" aria-label="Primary">
     <a href="#gait">The step</a>
     <a href="#device">Device</a>
@@ -785,10 +844,10 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
     </div>
     <figure class="mf-photos hero-photos">
       <div class="mf-frame">
-        <img src="assets/img/eye-level.jpg" alt="A woman standing upright in the ABLE exoskeleton, smiling at eye level" decoding="async">
-        <img src="assets/img/hug.jpg" alt="A man standing in the ABLE exoskeleton with crutches, a therapist close behind him" decoding="async">
-        <img src="assets/img/first-step.jpg" alt="A woman taking a step in the ABLE exoskeleton outdoors, her empty wheelchair behind her" decoding="async">
-        <img src="assets/img/thousandth.jpg" alt="A man standing outdoors in the ABLE exoskeleton, looking ahead" decoding="async">
+        <img src="assets/img/eye-level.jpg" width="482" height="600" alt="A woman standing upright in the ABLE exoskeleton, smiling at eye level" decoding="async">
+        <img src="assets/img/hug.jpg" width="482" height="600" alt="A man standing in the ABLE exoskeleton with crutches, a therapist close behind him" decoding="async">
+        <img src="assets/img/first-step.jpg" width="480" height="600" alt="A woman taking a step in the ABLE exoskeleton outdoors, her empty wheelchair behind her" decoding="async">
+        <img src="assets/img/thousandth.jpg" width="482" height="600" alt="A man standing outdoors in the ABLE exoskeleton, looking ahead" decoding="async">
       </div>
       <figcaption class="mono tiny"><span class="mf-n">01</span><i></i><span class="mf-cap">Eye level</span><span class="mf-of">/ 04</span></figcaption>
     </figure>
@@ -885,10 +944,10 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
         <p class="mono tiny mute out-sched">4 weeks · 3 sessions a week</p>
       </div>
       <figure class="out-photo" aria-label="A patient's sessions: first steps, fitting, crutches, walking out">
-        <div class="op-i"><img src="assets/img/session-walker.jpg" alt="A woman walking outdoors in the ABLE exoskeleton with a walker, her therapist beside her" decoding="async"></div>
-        <div class="op-i"><img src="assets/img/session-fit.jpg" alt="Two therapists fitting the ABLE exoskeleton on a patient standing at a walker" decoding="async"></div>
-        <div class="op-i"><img src="assets/img/session-crutches.jpg" alt="A patient walking in the ABLE exoskeleton with forearm crutches" decoding="async"></div>
-        <div class="op-i"><img src="assets/img/session-highfive.jpg" alt="A patient in the ABLE exoskeleton high-fiving his therapist" decoding="async"></div>
+        <div class="op-i"><img src="assets/img/session-walker.jpg" width="1200" height="900" loading="lazy" alt="A woman walking outdoors in the ABLE exoskeleton with a walker, her therapist beside her" decoding="async"></div>
+        <div class="op-i"><img src="assets/img/session-fit.jpg" width="1200" height="900" loading="lazy" alt="Two therapists fitting the ABLE exoskeleton on a patient standing at a walker" decoding="async"></div>
+        <div class="op-i"><img src="assets/img/session-crutches.jpg" width="1200" height="900" loading="lazy" alt="A patient walking in the ABLE exoskeleton with forearm crutches" decoding="async"></div>
+        <div class="op-i"><img src="assets/img/session-highfive.jpg" width="1200" height="900" loading="lazy" alt="A patient in the ABLE exoskeleton high-fiving his therapist" decoding="async"></div>
       </figure>
       <div class="out-metrics">
         <div class="metric"><b data-to="2.6">1.0</b><span>× walking time per session</span></div>
@@ -1025,9 +1084,9 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
           <p class="body sub">We'll bring the device, fit a patient or a volunteer and run a full session with your team. You'll have the evidence pack, a throughput model and the reimbursement dossier.</p>
         </div>
         <div class="cta-actions">
-          <a class="btn" href="mailto:hello@ablehumanmotion.com?subject=Clinical%20demo%20request">Book a clinical demo</a>
+          <button class="btn" type="button" data-concept>Book a clinical demo</button>
           <a class="btn btn-ghost tbc" data-note="Needs ABLE input: dossier PDF" href="#q-evidence">Download clinical dossier</a>
-          <p class="mono tiny mute">hello@ablehumanmotion.com · +34 931 892 594</p>
+          <p class="mono tiny mute">Concept only: this button explains the project instead of emailing ABLE.</p>
         </div>
       </div>
     </div>
@@ -1062,9 +1121,9 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
           </div>
           <div>
             <p class="foot-label mono">Contact</p>
-            <a href="mailto:hello@ablehumanmotion.com">hello@ablehumanmotion.com</a>
-            <a href="tel:+34931892594">+34 931 89 25 94</a>
-            <p class="foot-addr">C/ Marie Curie 8–14<br>08042 Barcelona, Spain</p>
+            <a href="https://ablehumanmotion.com/en" target="_blank" rel="noopener">The real ABLE team ↗</a>
+            <button type="button" class="foot-link" data-concept>About this concept</button>
+            <p class="foot-addr">ABLE Human Motion<br>Barcelona, Spain</p>
             <a class="foot-cta" href="#contact">Book a clinical demo <span aria-hidden="true">↗</span></a>
           </div>
         </nav>
@@ -1086,16 +1145,34 @@ body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
       </div>
 
       <div class="foot-bottom mono">
-        <span>© 2026 ABLE Human Motion S.L.</span>
+        <span>Concept by <a href="https://www.linkedin.com/in/jeronimoginaca" target="_blank" rel="noopener">Jero Ginaca</a> · not affiliated with ABLE Human Motion</span>
         <span class="foot-legal"><a href="#top">Privacy</a><a href="#top">Cookies</a><a href="#top">Terms</a></span>
         <span class="foot-social"><a href="#top">LinkedIn</a><a href="#top">Instagram</a><a href="#top">YouTube</a><a href="#top">X</a></span>
         <span>Barcelona <b id="foot-clock">--:--</b></span>
-        <span>Concept redesign · <button id="review-toggle" class="review-btn">Show content gaps</button></span>
+        <span><button type="button" class="review-btn" data-concept>About</button> · <button id="review-toggle" class="review-btn" type="button">Show content gaps</button></span>
         <a href="#top" class="foot-top-link">Back to top <span aria-hidden="true">↑</span></a>
       </div>
     </footer>
   </section>
 </main>
+
+<dialog id="concept" class="concept" aria-labelledby="concept-h" data-lenis-prevent>
+  <form method="dialog"><button class="concept-x" aria-label="Close">×</button></form>
+  <p class="mono label">About this project</p>
+  <h2 id="concept-h" class="h2">An unofficial<br><em>concept redesign.</em></h2>
+  <p class="body">I designed and built this as a portfolio piece: a scroll-directed three.js site for the ABLE exoskeleton, made around one idea. The product is motion, so the site should move.</p>
+  <p class="body-s">It isn't affiliated with or endorsed by ABLE Human Motion. Photography and product facts belong to ABLE and its published research. They're used here for illustration and cited on the page. The demo and newsletter forms aren't connected to anything.</p>
+  <dl class="kv mono">
+    <dt>Design &amp; code</dt><dd>Jero Ginaca</dd>
+    <dt>Built with</dt><dd>three.js, Lenis, hand-written HTML/CSS/JS</dd>
+    <dt>3D</dt><dd>Procedural figure, exoskeleton and gait model</dd>
+  </dl>
+  <div class="cta-row">
+    <a class="btn" href="https://www.linkedin.com/in/jeronimoginaca" target="_blank" rel="noopener">Jero on LinkedIn</a>
+    <a class="btn btn-ghost" href="https://github.com/jeroginaca/able-redesign" target="_blank" rel="noopener">Source &amp; case study</a>
+    <a class="btn btn-ghost" href="https://ablehumanmotion.com/en" target="_blank" rel="noopener">The real ABLE ↗</a>
+  </div>
+</dialog>
 
 <noscript><style>#loader{display:none}</style></noscript>
 <script type="module">
@@ -1998,6 +2075,11 @@ const OP_OUT = [.6, .72, .84, 1.3];   // photo 4 goes once the section has scrol
   });
 }
 
+// "about this concept" dialog: every data-concept control opens it (a light-dismiss click on the backdrop closes it)
+const conceptDlg = $('#concept');
+$$('[data-concept]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); conceptDlg.showModal(); }));
+conceptDlg.addEventListener('click', e => { if (e.target === conceptDlg) conceptDlg.close(); });
+
 // review mode (highlights copy that still needs ABLE's input)
 $('#review-toggle').addEventListener('click', e => {
   const on = document.body.classList.toggle('review');
@@ -2084,7 +2166,7 @@ function params(name, t, o = {}) {
       const a = lerp(-.25, 1.05, easeIO(t)), R = 3.5;
       const tx = mob ? 0 : .05;
       Object.assign(o, { cx: tx + Math.sin(a) * R, cy: 1.1 + Math.sin(t * Math.PI) * .25, cz: Math.cos(a) * R, tx, ty: mob ? 1.0 : .8, fov: 30,
-        explode: smooth(clamp((t - .04) / .32)), xray: clamp(t * 5) * .95, pool: .6, sx: 0, sy: mob ? 0 : .07 });
+        explode: smooth(clamp((t - .04) / .32)), xray: clamp(t * 5) * .95, pool: .6, sx: isMid() ? -.14 : 0, sy: mob ? 0 : .07 });
       break;
     }
     case 'outcomes':
@@ -2336,7 +2418,7 @@ function tick() {
   // ---- DOM sync
   updateDOM(y, sec, kneeDeg, hipDeg, labOn);
 
-  composer.render();
+  if (W && H) composer.render(); // a hidden/zero-size viewport has no framebuffer to draw into
   frame++;
   if (frame === 2) { loader.set(1); setTimeout(() => loader.done(), 450); }
   requestAnimationFrame(tick);
@@ -2402,7 +2484,7 @@ function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
   // one card at a time, floating beside its part with a short leader
   callouts.forEach((co, i) => {
     co.li.classList.toggle('cur', i === curIdx);
-    const vis = i === curIdx && devOn > .05 && !isMobile();
+    const vis = i === curIdx && devOn > .05 && !isMobile() && !isMid();
     co.line.style.opacity = co.dot.style.opacity = co.halo.style.opacity = vis ? devOn : 0;
     if (!vis) return;
     anchors[co.anchor].getWorldPosition(_w);

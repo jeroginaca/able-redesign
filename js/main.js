@@ -897,6 +897,11 @@ const OP_OUT = [.6, .72, .84, 1.3];   // photo 4 goes once the section has scrol
   });
 }
 
+// "about this concept" dialog: every data-concept control opens it (a light-dismiss click on the backdrop closes it)
+const conceptDlg = $('#concept');
+$$('[data-concept]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); conceptDlg.showModal(); }));
+conceptDlg.addEventListener('click', e => { if (e.target === conceptDlg) conceptDlg.close(); });
+
 // review mode (highlights copy that still needs ABLE's input)
 $('#review-toggle').addEventListener('click', e => {
   const on = document.body.classList.toggle('review');
@@ -983,7 +988,7 @@ function params(name, t, o = {}) {
       const a = lerp(-.25, 1.05, easeIO(t)), R = 3.5;
       const tx = mob ? 0 : .05;
       Object.assign(o, { cx: tx + Math.sin(a) * R, cy: 1.1 + Math.sin(t * Math.PI) * .25, cz: Math.cos(a) * R, tx, ty: mob ? 1.0 : .8, fov: 30,
-        explode: smooth(clamp((t - .04) / .32)), xray: clamp(t * 5) * .95, pool: .6, sx: 0, sy: mob ? 0 : .07 });
+        explode: smooth(clamp((t - .04) / .32)), xray: clamp(t * 5) * .95, pool: .6, sx: isMid() ? -.14 : 0, sy: mob ? 0 : .07 });
       break;
     }
     case 'outcomes':
@@ -1235,7 +1240,7 @@ function tick() {
   // ---- DOM sync
   updateDOM(y, sec, kneeDeg, hipDeg, labOn);
 
-  composer.render();
+  if (W && H) composer.render(); // a hidden/zero-size viewport has no framebuffer to draw into
   frame++;
   if (frame === 2) { loader.set(1); setTimeout(() => loader.done(), 450); }
   requestAnimationFrame(tick);
@@ -1301,7 +1306,7 @@ function updateDOM(y, sec, kneeDeg, hipDeg, labOn) {
   // one card at a time, floating beside its part with a short leader
   callouts.forEach((co, i) => {
     co.li.classList.toggle('cur', i === curIdx);
-    const vis = i === curIdx && devOn > .05 && !isMobile();
+    const vis = i === curIdx && devOn > .05 && !isMobile() && !isMid();
     co.line.style.opacity = co.dot.style.opacity = co.halo.style.opacity = vis ? devOn : 0;
     if (!vis) return;
     anchors[co.anchor].getWorldPosition(_w);

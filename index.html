@@ -3,14 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ABLE Exoskeleton</title>
-<meta name="description" content="ABLE is a 9.8 kg knee-powered exoskeleton, CE-marked under EU MDR, that gets people with spinal cord injury standing and walking in clinic.">
+<title>ABLE Exoskeleton · Concept redesign by Jero Ginaca</title>
+<meta name="description" content="An unofficial, scroll-directed 3D concept redesign for the ABLE exoskeleton, designed and built by Jero Ginaca. Not affiliated with ABLE Human Motion.">
+<meta name="author" content="Jerónimo Ginaca">
+<!-- Unofficial concept: keep it out of search results so it never competes with the real brand -->
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://jeroginaca.github.io/able-redesign/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jeroginaca.github.io/able-redesign/">
+<meta property="og:title" content="ABLE · Movement is the product (concept redesign)">
+<meta property="og:description" content="A scroll-directed three.js concept for the ABLE exoskeleton: a live chronophotograph, a gait lab you scroll through, and an x-ray device view. Designed and built by Jero Ginaca.">
+<meta property="og:image" content="https://jeroginaca.github.io/able-redesign/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ABLE concept redesign: Movement is the product">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#120d24">
 <script>(function(){var t;try{t=new URLSearchParams(location.search).get('theme')||sessionStorage.getItem('able-theme');}catch(e){}document.documentElement.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=iter2">
+<link rel="stylesheet" href="css/style.css?v=4">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
@@ -31,14 +45,18 @@
     <div class="loader-word">ABLE</div>
     <div class="loader-track"><span id="loader-bar"></span></div>
     <div class="loader-meta mono"><span>Calibrating gait model</span><span id="loader-pct">0%</span></div>
+    <p class="loader-credit mono">Unofficial concept redesign by Jero Ginaca</p>
   </div>
 </div>
 
 <!-- Navigation -->
 <header class="nav">
-  <a href="#top" class="logo" aria-label="ABLE Human Motion, home">
-    <span class="logo-mark"></span><span class="logo-word">ABLE</span>
-  </a>
+  <div class="nav-brand">
+    <a href="#top" class="logo" aria-label="ABLE concept, back to top">
+      <span class="logo-mark"></span><span class="logo-word">ABLE</span>
+    </a>
+    <button class="concept-tag mono" type="button" data-concept aria-label="About this concept redesign">Concept</button>
+  </div>
   <nav class="nav-links" aria-label="Primary">
     <a href="#gait">The step</a>
     <a href="#device">Device</a>
@@ -76,10 +94,10 @@
     </div>
     <figure class="mf-photos hero-photos">
       <div class="mf-frame">
-        <img src="assets/img/eye-level.jpg" alt="A woman standing upright in the ABLE exoskeleton, smiling at eye level" decoding="async">
-        <img src="assets/img/hug.jpg" alt="A man standing in the ABLE exoskeleton with crutches, a therapist close behind him" decoding="async">
-        <img src="assets/img/first-step.jpg" alt="A woman taking a step in the ABLE exoskeleton outdoors, her empty wheelchair behind her" decoding="async">
-        <img src="assets/img/thousandth.jpg" alt="A man standing outdoors in the ABLE exoskeleton, looking ahead" decoding="async">
+        <img src="assets/img/eye-level.jpg" width="482" height="600" alt="A woman standing upright in the ABLE exoskeleton, smiling at eye level" decoding="async">
+        <img src="assets/img/hug.jpg" width="482" height="600" alt="A man standing in the ABLE exoskeleton with crutches, a therapist close behind him" decoding="async">
+        <img src="assets/img/first-step.jpg" width="480" height="600" alt="A woman taking a step in the ABLE exoskeleton outdoors, her empty wheelchair behind her" decoding="async">
+        <img src="assets/img/thousandth.jpg" width="482" height="600" alt="A man standing outdoors in the ABLE exoskeleton, looking ahead" decoding="async">
       </div>
       <figcaption class="mono tiny"><span class="mf-n">01</span><i></i><span class="mf-cap">Eye level</span><span class="mf-of">/ 04</span></figcaption>
     </figure>
@@ -176,10 +194,10 @@
         <p class="mono tiny mute out-sched">4 weeks · 3 sessions a week</p>
       </div>
       <figure class="out-photo" aria-label="A patient's sessions: first steps, fitting, crutches, walking out">
-        <div class="op-i"><img src="assets/img/session-walker.jpg" alt="A woman walking outdoors in the ABLE exoskeleton with a walker, her therapist beside her" decoding="async"></div>
-        <div class="op-i"><img src="assets/img/session-fit.jpg" alt="Two therapists fitting the ABLE exoskeleton on a patient standing at a walker" decoding="async"></div>
-        <div class="op-i"><img src="assets/img/session-crutches.jpg" alt="A patient walking in the ABLE exoskeleton with forearm crutches" decoding="async"></div>
-        <div class="op-i"><img src="assets/img/session-highfive.jpg" alt="A patient in the ABLE exoskeleton high-fiving his therapist" decoding="async"></div>
+        <div class="op-i"><img src="assets/img/session-walker.jpg" width="1200" height="900" loading="lazy" alt="A woman walking outdoors in the ABLE exoskeleton with a walker, her therapist beside her" decoding="async"></div>
+        <div class="op-i"><img src="assets/img/session-fit.jpg" width="1200" height="900" loading="lazy" alt="Two therapists fitting the ABLE exoskeleton on a patient standing at a walker" decoding="async"></div>
+        <div class="op-i"><img src="assets/img/session-crutches.jpg" width="1200" height="900" loading="lazy" alt="A patient walking in the ABLE exoskeleton with forearm crutches" decoding="async"></div>
+        <div class="op-i"><img src="assets/img/session-highfive.jpg" width="1200" height="900" loading="lazy" alt="A patient in the ABLE exoskeleton high-fiving his therapist" decoding="async"></div>
       </figure>
       <div class="out-metrics">
         <div class="metric"><b data-to="2.6">1.0</b><span>× walking time per session</span></div>
@@ -316,9 +334,9 @@
           <p class="body sub">We'll bring the device, fit a patient or a volunteer and run a full session with your team. You'll have the evidence pack, a throughput model and the reimbursement dossier.</p>
         </div>
         <div class="cta-actions">
-          <a class="btn" href="mailto:hello@ablehumanmotion.com?subject=Clinical%20demo%20request">Book a clinical demo</a>
+          <button class="btn" type="button" data-concept>Book a clinical demo</button>
           <a class="btn btn-ghost tbc" data-note="Needs ABLE input: dossier PDF" href="#q-evidence">Download clinical dossier</a>
-          <p class="mono tiny mute">hello@ablehumanmotion.com · +34 931 892 594</p>
+          <p class="mono tiny mute">Concept only: this button explains the project instead of emailing ABLE.</p>
         </div>
       </div>
     </div>
@@ -353,9 +371,9 @@
           </div>
           <div>
             <p class="foot-label mono">Contact</p>
-            <a href="mailto:hello@ablehumanmotion.com">hello@ablehumanmotion.com</a>
-            <a href="tel:+34931892594">+34 931 89 25 94</a>
-            <p class="foot-addr">C/ Marie Curie 8–14<br>08042 Barcelona, Spain</p>
+            <a href="https://ablehumanmotion.com/en" target="_blank" rel="noopener">The real ABLE team ↗</a>
+            <button type="button" class="foot-link" data-concept>About this concept</button>
+            <p class="foot-addr">ABLE Human Motion<br>Barcelona, Spain</p>
             <a class="foot-cta" href="#contact">Book a clinical demo <span aria-hidden="true">↗</span></a>
           </div>
         </nav>
@@ -377,18 +395,36 @@
       </div>
 
       <div class="foot-bottom mono">
-        <span>© 2026 ABLE Human Motion S.L.</span>
+        <span>Concept by <a href="https://www.linkedin.com/in/jeronimoginaca" target="_blank" rel="noopener">Jero Ginaca</a> · not affiliated with ABLE Human Motion</span>
         <span class="foot-legal"><a href="#top">Privacy</a><a href="#top">Cookies</a><a href="#top">Terms</a></span>
         <span class="foot-social"><a href="#top">LinkedIn</a><a href="#top">Instagram</a><a href="#top">YouTube</a><a href="#top">X</a></span>
         <span>Barcelona <b id="foot-clock">--:--</b></span>
-        <span>Concept redesign · <button id="review-toggle" class="review-btn">Show content gaps</button></span>
+        <span><button type="button" class="review-btn" data-concept>About</button> · <button id="review-toggle" class="review-btn" type="button">Show content gaps</button></span>
         <a href="#top" class="foot-top-link">Back to top <span aria-hidden="true">↑</span></a>
       </div>
     </footer>
   </section>
 </main>
 
+<dialog id="concept" class="concept" aria-labelledby="concept-h" data-lenis-prevent>
+  <form method="dialog"><button class="concept-x" aria-label="Close">×</button></form>
+  <p class="mono label">About this project</p>
+  <h2 id="concept-h" class="h2">An unofficial<br><em>concept redesign.</em></h2>
+  <p class="body">I designed and built this as a portfolio piece: a scroll-directed three.js site for the ABLE exoskeleton, made around one idea. The product is motion, so the site should move.</p>
+  <p class="body-s">It isn't affiliated with or endorsed by ABLE Human Motion. Photography and product facts belong to ABLE and its published research. They're used here for illustration and cited on the page. The demo and newsletter forms aren't connected to anything.</p>
+  <dl class="kv mono">
+    <dt>Design &amp; code</dt><dd>Jero Ginaca</dd>
+    <dt>Built with</dt><dd>three.js, Lenis, hand-written HTML/CSS/JS</dd>
+    <dt>3D</dt><dd>Procedural figure, exoskeleton and gait model</dd>
+  </dl>
+  <div class="cta-row">
+    <a class="btn" href="https://www.linkedin.com/in/jeronimoginaca" target="_blank" rel="noopener">Jero on LinkedIn</a>
+    <a class="btn btn-ghost" href="https://github.com/jeroginaca/able-redesign" target="_blank" rel="noopener">Source &amp; case study</a>
+    <a class="btn btn-ghost" href="https://ablehumanmotion.com/en" target="_blank" rel="noopener">The real ABLE ↗</a>
+  </div>
+</dialog>
+
 <noscript><style>#loader{display:none}</style></noscript>
-<script type="module" src="js/main.js?v=iter2"></script>
+<script type="module" src="js/main.js?v=4"></script>
 </body>
 </html>

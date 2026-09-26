@@ -409,6 +409,19 @@ body.review .tbc::before { content: attr(data-note); position: absolute; top: -2
   .sites li { padding: 8px 0; }
 }
 
+/* Landscape tablets / small laptop windows: the exploded device needs the room,
+   so its heading moves up and the part card docks bottom-left (matches isMid() in main.js) */
+@media (min-width: 761px) and (max-width: 1100px) and (orientation: landscape) {
+  .device-copy { top: 96px; transform: none; max-width: 360px; }
+  .device-copy .h2 { font-size: var(--fs-h3); }
+  .device-copy .body { display: none; }
+  .callout-list { left: var(--gutter); top: auto; bottom: 24px; width: 340px; height: auto; }
+  .callout-list li { display: none; position: static; width: auto; opacity: 1; transform: none !important; }
+  .callout-list li.cur { display: grid; }
+  #leaders { display: none; }
+  .gp-foot { flex-direction: column; gap: 8px; }
+  .gp-desc { text-align: left; min-height: 0; }
+}
 /* Phones only */
 @media (max-width: 760px) {
   :root { --fs-h1: 3.5rem; --fs-h2: 2.75rem; --fs-h3: 2.25rem; --fs-h4: 2rem; --fs-h5: 1.25rem; --fs-sub: 1.25rem; --fs-lg: 1.125rem; }
@@ -705,3 +718,31 @@ body.nav-onfoot .nav-links a, body.nav-onfoot .logo, body.nav-onfoot .lang b, bo
 body.nav-onfoot .lang { color: #8a93ad; }
 body.nav-onfoot .logo-mark { border-color: #f4f6f8; }
 body.nav-onfoot .theme-toggle { border-color: rgba(200,213,220,.3); }
+
+/* ---------- Concept framing (portfolio) ---------- */
+.nav-brand { display: flex; align-items: center; gap: 14px; }
+.concept-tag { font-size: .625rem; text-transform: uppercase; letter-spacing: .12em; color: var(--accent-soft); background: none; border: 1px solid rgba(176,202,98,.45); border-radius: 999px; padding: 4px 9px; cursor: pointer; transition: background .3s, color .3s; }
+.concept-tag:hover { background: rgba(176,202,98,.14); }
+body.nav-light .concept-tag { color: var(--indigo); border-color: rgba(33,25,60,.35); }
+.loader-credit { margin: 28px 0 0; font-size: var(--fs-xs); color: var(--mute); text-transform: uppercase; letter-spacing: .08em; }
+button.btn { cursor: pointer; font-family: var(--sans); }
+.foot-link { font: inherit; font-size: var(--fs-sm); color: #c8d5dc; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+.foot-link:hover { color: #fff; }
+.foot-bottom span > a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+
+.concept { width: min(620px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 40px; color: var(--ink); background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: 0 40px 120px -30px rgba(0,0,0,.6); }
+.concept::backdrop { background: rgba(10, 8, 22, .6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.concept[open] { animation: concept-in .45s var(--ease) both; }
+@keyframes concept-in { from { opacity: 0; transform: translateY(16px); } }
+.concept .h2 { font-size: var(--fs-h4); margin: 0 0 18px; }
+.concept .body { margin: 0 0 14px; }
+.concept .body-s { margin: 0 0 22px; }
+.concept .kv { margin-bottom: 28px; }
+.concept-x { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-2); background: none; color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; }
+.concept-x:hover { background: var(--line); }
+@media (max-width: 760px) {
+  .concept { padding: 28px 22px; }
+  .concept .cta-row .btn { width: 100%; justify-content: center; }
+}
+@media (max-width: 380px) { .concept-tag { display: none; } }
+@media (prefers-reduced-motion: reduce) { .concept[open] { animation: none; } }
